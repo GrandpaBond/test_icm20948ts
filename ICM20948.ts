@@ -1,0 +1,337 @@
+
+// TypeScript driver for Microbit (inspired by https://github.com/pimoroni/icm20948-python)
+
+//namespace ICM {
+const CHIP_ID = 0xEA;
+const ICM20948_BANK_SEL = 0x7f;
+
+const ICM20948_NOT_FOUND = 222; // Panic code!
+
+
+const ICM20948_I2C_MST_ODR_CONFIG = 0x00;
+const ICM20948_I2C_MST_CTRL = 0x01;
+const ICM20948_I2C_MST_DELAY_CTRL = 0x02;
+const ICM20948_I2C_SLV0_ADDR = 0x03;
+const ICM20948_I2C_SLV0_REG = 0x04;
+const ICM20948_I2C_SLV0_CTRL = 0x05;
+const ICM20948_I2C_SLV0_DO = 0x06;
+const ICM20948_EXT_SLV_SENS_DATA_00 = 0x3B;
+
+const ICM20948_GYRO_SMPLRT_DIV = 0x00;
+const ICM20948_GYRO_CONFIG_1 = 0x01;
+const ICM20948_GYRO_CONFIG_2 = 0x02;
+
+// Bank 0
+const ICM20948_WHO_AM_I = 0x00;
+const ICM20948_USER_CTRL = 0x03;
+const ICM20948_PWR_MGMT_1 = 0x06;
+const ICM20948_PWR_MGMT_2 = 0x07;
+const ICM20948_INT_PIN_CFG = 0x0F;
+
+const ICM20948_ACCEL_SMPLRT_DIV_1 = 0x10;
+const ICM20948_ACCEL_SMPLRT_DIV_2 = 0x11;
+const ICM20948_ACCEL_INTEL_CTRL = 0x12;
+const ICM20948_ACCEL_WOM_THR = 0x13;
+const ICM20948_ACCEL_CONFIG = 0x14;
+const ICM20948_ACCEL_XOUT_H = 0x2D;
+const ICM20948_GRYO_XOUT_H = 0x33;
+
+const ICM20948_TEMP_OUT_H = 0x39;
+const ICM20948_TEMP_OUT_L = 0x3A;
+
+// Offset and sensitivity - defined in electrical characteristics, and TEMP_OUT_H/L of datasheet
+const ICM20948_TEMPERATURE_DEGREES_OFFSET = 21;
+const ICM20948_TEMPERATURE_SENSITIVITY = 333.87;
+const ICM20948_ROOM_TEMP_OFFSET = 21;
+
+const AK09916_I2C_ADDR = 0x0c;
+const AK09916_CHIP_ID = 0x09;
+const AK09916_WIA = 0x01;
+const AK09916_NOT_FOUND = 333; // Panic code!
+
+const AK09916_ST1 = 0x10;
+const AK09916_ST1_DOR = 0b00000010   // Data overflow bit
+const AK09916_ST1_DRDY = 0b00000001  // Data ready bit
+const AK09916_HXL = 0x11;
+const AK09916_ST2 = 0x18;
+const AK09916_ST2_HOFL = 0b00001000  // Magnetic sensor overflow bit
+const AK09916_CNTL2 = 0x31;
+const AK09916_CNTL2_MODE = 0b00001111;
+const AK09916_CNTL2_MODE_OFF = 0;
+const AK09916_CNTL2_MODE_SINGLE = 1;
+const AK09916_CNTL2_MODE_CONT1 = 2;
+const AK09916_CNTL2_MODE_CONT2 = 4;
+const AK09916_CNTL2_MODE_CONT3 = 6;
+const AK09916_CNTL2_MODE_CONT4 = 8;
+const AK09916_CNTL2_MODE_TEST = 16;
+const AK09916_CNTL3 = 0x32;
+// GLOBALS
+
+class ICM20948 {
+    registerBank: number
+    i2cAddress: number
+
+    constructor(myAddress: number) {
+        this.registerBank = -1; // currently-selected register-bank
+        this.i2cAddress = myAddress; // I2C master address of ICM20948
+
+        this.selectBank(0);
+        if (this.read(ICM20948_WHO_AM_I) != CHIP_ID) {
+            //throw RuntimeError('Unable to find ICM20948');
+            control.panic(ICM20948_NOT_FOUND)
+        }
+        this.write(ICM20948_PWR_MGMT_1, 0x80);
+        basic.pause(10) //time.sleep(0.01);
+        this.write(ICM20948_PWR_MGMT_1, 0x01);
+        this.write(ICM20948_PWR_MGMT_2, 0x00);
+
+        this.selectBank(2);
+
+        this.set_gyro_sample_rate(100);
+        this.set_gyro_low_pass(true, 5);
+        this.set_gyro_full_scale(250);
+
+        this.set_accelerometer_sample_rate(125);
+        this.set_accelerometer_low_pass(true, 5);
+        this.set_accelerometer_full_scale(16);
+
+        this.selectBank(0);
+        this.write(ICM20948_INT_PIN_CFG, 0x30);
+
+        this.selectBank(3);
+        this.write(ICM20948_I2C_MST_CTRL, 0x4D);
+        this.write(ICM20948_I2C_MST_DELAY_CTRL, 0x01);
+
+        if (this.mag_read(AK09916_WIA) != AK09916_CHIP_ID) {
+            // throw RuntimeError('Unable to find AK09916');
+            control.panic(AK09916_NOT_FOUND)
+        }
+        // Reset the magnetometer
+        this.mag_write(AK09916_CNTL3, 0x01);
+        while (this.mag_read(AK09916_CNTL3) == 0x01) {
+            control.waitMicros(100) //time.sleep(0.0001);
+        }
+    }
+
+    write(reg:number, value:number) {
+        /* Write byte to the sensor. */
+        //_bus.this.write_byte_data(_addr, reg, value);
+
+        let twoBytes = pins.createBuffer(2)
+        twoBytes[0] = this.i2cAddress
+        twoBytes[1] = reg
+        pins.i2cWriteBuffer(this.i2cAddress, twoBytes, false)
+        control.waitMicros(100) //time.sleep(0.0001);
+    }
+
+    read(reg: number) {
+        /* Read byte from the sensor. */
+        // return _bus.read_byte_data(_addr, reg);
+        pins.i2cWriteNumber(this.i2cAddress, reg, NumberFormat.UInt8LE)
+        return pins.i2cReadNumber(this.i2cAddress, NumberFormat.UInt8LE, false)
+    }
+
+    read_bytes(reg: number, length = 1) {
+        /* Read byte(s) from the sensor. */
+        // return _bus.read_i2c_block_data(_addr, reg, length);
+        let buf = pins.createBuffer(length)
+        pins.i2cWriteNumber(this.i2cAddress, reg, NumberFormat.UInt8LE)
+        buf = pins.i2cReadBuffer(this.i2cAddress, length, false)
+        return buf
+    }
+
+
+    selectBank(value: number) {
+        /* Switch register bank. */
+        if (!(this.registerBank == value)) {
+            this.write(ICM20948_BANK_SEL, value << 4);
+            this.registerBank = value;
+        }
+    }
+    trigger_mag_io() {
+        let user = this.read(ICM20948_USER_CTRL);
+        this.write(ICM20948_USER_CTRL, user | 0x20);
+        control.waitMicros(5000) //time.sleep(0.005);
+        this.write(ICM20948_USER_CTRL, user);
+    }
+
+
+    mag_write(reg: number, value: number) {
+        /* Write a byte to the slave magnetometer. */
+        this.selectBank(3);
+        this.write(ICM20948_I2C_SLV0_ADDR, AK09916_I2C_ADDR)  // Write one byte
+        this.write(ICM20948_I2C_SLV0_REG, reg);
+        this.write(ICM20948_I2C_SLV0_DO, value);
+        this.selectBank(0);
+        this.trigger_mag_io();
+    }
+
+    mag_read(reg: number) {
+        /* Read a byte from the slave magnetometer. */
+        this.selectBank(3);
+        this.write(ICM20948_I2C_SLV0_ADDR, AK09916_I2C_ADDR | 0x80);
+        this.write(ICM20948_I2C_SLV0_REG, reg);
+        this.write(ICM20948_I2C_SLV0_DO, 0xff);
+
+        this.selectBank(0);
+        this.trigger_mag_io();
+
+        return this.read(ICM20948_EXT_SLV_SENS_DATA_00);
+    }
+
+
+    mag_read_bytes(reg: number, length = 1) {
+        /* Read up to 24 bytes from the slave magnetometer. */
+        this.selectBank(3);
+        this.write(ICM20948_I2C_SLV0_CTRL, 0x80 | 0x08 | length);
+        this.write(ICM20948_I2C_SLV0_ADDR, AK09916_I2C_ADDR | 0x80);
+        this.write(ICM20948_I2C_SLV0_REG, reg);
+        this.write(ICM20948_I2C_SLV0_DO, 0xff);
+        this.selectBank(0);
+        this.trigger_mag_io();
+
+        return this.read_bytes(ICM20948_EXT_SLV_SENS_DATA_00, length);
+    }
+
+
+    magnetometer_ready() {
+        /* Check the magnetometer status ready bit. */
+        return (this.mag_read(AK09916_ST1) & 0x01) > 0;
+    }
+
+    read_magnetometer_data(timeout = 1.0) {
+        this.mag_write(AK09916_CNTL2, 0x01)  // Trigger single measurement
+        let t_start = control.millis()
+        let data:Buffer
+        while (!this.magnetometer_ready()) {
+            if (control.millis() - t_start > timeout) {
+                /////throw RuntimeError('Timeout waiting for Magnetometer Ready');
+                control.waitMicros(10) //time.sleep(0.00001);
+            }
+            data = this.mag_read_bytes(AK09916_HXL, 6);
+        }
+        // Read ST2 to confirm read finished,
+        // needed for continuous modes
+        // mag_this.read(AK09916_ST2)
+
+        //////x, y, z = struct.unpack('<hhh', bytearray(data));
+        let x = data.getNumber(NumberFormat.UInt16LE, 0)
+        let y = data.getNumber(NumberFormat.UInt16LE, 2)
+        let z = data.getNumber(NumberFormat.UInt16LE, 4)
+
+        // Scale for magnetic flux density "uT"
+        // from section 3.3 of the datasheet
+        // This value is constant
+        x *= 0.15;
+        y *= 0.15;
+        z *= 0.15;
+
+        return [x, y, z];
+    }
+    read_accelerometer_gyro_data() {
+        this.selectBank(0);
+        let data = this.read_bytes(ICM20948_ACCEL_XOUT_H, 12);
+        //ax, ay, az, gx, gy, gz = struct.unpack('>hhhhhh', bytearray(data));
+        //dissect 12 bytes into 6 words
+        let ax = data.getNumber(NumberFormat.UInt16LE, 0)
+        let ay = data.getNumber(NumberFormat.UInt16LE, 2)
+        let az = data.getNumber(NumberFormat.UInt16LE, 4)
+        let gx = data.getNumber(NumberFormat.UInt16LE, 6)
+        let gy = data.getNumber(NumberFormat.UInt16LE, 8)
+        let gz = data.getNumber(NumberFormat.UInt16LE, 10)
+
+        this.selectBank(2);
+
+        // Read accelerometer full scale range and
+        // use it to compensate the reading to gs
+        let scale = (this.read(ICM20948_ACCEL_CONFIG) & 0x06) >> 1;
+
+        // scale ranges from section 3.2 of the datasheet
+        let gs = [16384.0, 8192.0, 4096.0, 2048.0][scale];
+
+        ax /= gs;
+        ay /= gs;
+        az /= gs;
+
+        // Read back the degrees per second rate and
+        // use it to compensate the reading to dps
+        scale = (this.read(ICM20948_GYRO_CONFIG_1) & 0x06) >> 1;
+
+        // scale ranges from section 3.1 of the datasheet
+        let dps = [131, 65.5, 32.8, 16.4][scale];
+
+        gx /= dps;
+        gy /= dps;
+        gz /= dps;
+
+        return [ax, ay, az, gx, gy, gz];
+    }
+
+    set_accelerometer_sample_rate(rate = 125) {
+        /* Set the accelerometer sample rate in Hz. */
+        this.selectBank(2);
+        // 125Hz - 1.125 kHz / (1 + rate)
+        //rate = Number((1125.0 / rate) - 1);
+        rate = (1125.0 / rate) - 1;
+        // TODO maybe use struct to pack and then this.write_bytes
+        this.write(ICM20948_ACCEL_SMPLRT_DIV_1, (rate >> 8) & 0xff);
+        this.write(ICM20948_ACCEL_SMPLRT_DIV_2, rate & 0xff);
+    }
+
+    set_accelerometer_full_scale(scale = 16) {
+        /* Set the accelerometer fulls cale range to +- the supplied value. */
+        this.selectBank(2);
+        let value = this.read(ICM20948_ACCEL_CONFIG) & 0b11111001;
+        ///////value |= { 2: 0b00, 4: 0b01, 8: 0b10, 16: 0b11 }[scale] << 1;
+        this.write(ICM20948_ACCEL_CONFIG, value);
+    }
+
+    set_accelerometer_low_pass(enabled = true, mode = 5) {
+        /* Configure the accelerometer low pass filter. */
+        this.selectBank(2);
+        let value = this.read(ICM20948_ACCEL_CONFIG) & 0b10001110;
+        if (enabled) {
+            value |= 0b1;
+            value |= (mode & 0x07) << 4;
+            this.write(ICM20948_ACCEL_CONFIG, value);
+        }
+    }
+
+    set_gyro_sample_rate(rate = 125) {
+        /* Set the gyro sample rate in Hz. */
+        this.selectBank(2);
+        // 125Hz sample rate - 1.125 kHz / (1 + rate)
+        rate = (1125.0 / rate) - 1;
+        this.write(ICM20948_GYRO_SMPLRT_DIV, rate);
+    }
+
+    set_gyro_full_scale(scale = 250) {
+        /* Set the gyro full scale range to +- supplied value. */
+        this.selectBank(2);
+        let value = this.read(ICM20948_GYRO_CONFIG_1) & 0b11111001;
+        /////value |= { 250: 0b00, 500: 0b01, 1000: 0b10, 2000: 0b11 }[scale] << 1;
+        this.write(ICM20948_GYRO_CONFIG_1, value);
+    }
+
+    set_gyro_low_pass(enabled = true, mode = 5) {
+        /* Configure the gyro low pass filter. */
+        this.selectBank(2);
+        let value = this.read(ICM20948_GYRO_CONFIG_1) & 0b10001110;
+        if (enabled) {
+            value |= 0b1;
+        }
+        value |= (mode & 0x07) << 4;
+        this.write(ICM20948_GYRO_CONFIG_1, value);
+    }
+
+    read_temperature() {
+        /* Property to read the current IMU temperature */
+        // PWR_MGMT_1 defaults to leave temperature enabled
+        this.selectBank(0);
+        let temp_raw_bytes = this.read_bytes(ICM20948_TEMP_OUT_H, 2);
+        //let temp_raw = struct.unpack('>h', bytearray(temp_raw_bytes))[0];
+        let temp_raw = (temp_raw_bytes[0] << 8) + temp_raw_bytes[1]
+        let temperature_deg_c = ((temp_raw - ICM20948_ROOM_TEMP_OFFSET) / ICM20948_TEMPERATURE_SENSITIVITY) + ICM20948_TEMPERATURE_DEGREES_OFFSET;
+        return temperature_deg_c;
+    }
+}
