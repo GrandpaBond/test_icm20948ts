@@ -1,7 +1,7 @@
 const I2C_BUS = 0x68
 let sensor = new ICM20948(I2C_BUS)
 datalogger.log(datalogger.createCV("sensor init:", sensor.status))
-
+basic.showString("init:"+sensor.status)
 let mag:number[], gyro:number[]
 input.onButtonPressed(Button.A, function() { 
     mag = sensor.read_magnetometer_data()

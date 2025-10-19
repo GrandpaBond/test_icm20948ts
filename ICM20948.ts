@@ -99,19 +99,28 @@ class ICM20948 {
         this.set_accelerometer_full_scale(16);
 
         this.selectBank(0);
+        basic.pause(10) //time.sleep(0.01);
         this.write(ICM20948_INT_PIN_CFG, 0x30);
+        basic.pause(10) //time.sleep(0.01);
 
         this.selectBank(3);
-        this.write(ICM20948_I2C_MST_CTRL, 0x4D);
-        this.write(ICM20948_I2C_MST_DELAY_CTRL, 0x01);
+        basic.pause(10) //time.sleep(0.01);
 
         // Reset the magnetometer
         this.mag_write(AK09916_CNTL3, 0x01);
         while (this.mag_read(AK09916_CNTL3) == 0x01) {
             control.waitMicros(100) //time.sleep(0.0001);
         }
-        if (this.mag_read(AK09916_WIA) == AK09916_CHIP_ID) {
-            this.status |= MAG_FOUND
+
+        // now check ID up to 10 times
+        for (let i=0;i<10;i++) {
+            this.write(ICM20948_I2C_MST_CTRL, 0x4D);
+            basic.pause(10) //time.sleep(0.01);
+            this.write(ICM20948_I2C_MST_DELAY_CTRL, 0x01);
+            basic.pause(10) //time.sleep(0.01);
+            if (this.mag_read(AK09916_WIA) == AK09916_CHIP_ID) {
+                this.status |= MAG_FOUND
+            }
         }
     }
 
