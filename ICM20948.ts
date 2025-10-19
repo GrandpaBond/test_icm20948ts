@@ -65,20 +65,23 @@ const AK09916_CNTL2_MODE_CONT3 = 6;
 const AK09916_CNTL2_MODE_CONT4 = 8;
 const AK09916_CNTL2_MODE_TEST = 16;
 const AK09916_CNTL3 = 0x32;
-// GLOBALS
+
+const GYRO_FOUND = 0x01
+const MAG_FOUND = 0x02
 
 class ICM20948 {
     registerBank: number
     i2cAddress: number
+    status: number
 
     constructor(myAddress: number) {
         this.registerBank = -1; // currently-selected register-bank
         this.i2cAddress = myAddress; // I2C master address of ICM20948
+        this.status = 0
 
         this.selectBank(0);
-        if (this.read(ICM20948_WHO_AM_I) != CHIP_ID) {
-            //throw RuntimeError('Unable to find ICM20948');
-            control.panic(ICM20948_NOT_FOUND)
+        if (this.read(ICM20948_WHO_AM_I) == CHIP_ID) {
+            this.status |= GYRO_FOUND
         }
         this.write(ICM20948_PWR_MGMT_1, 0x80);
         basic.pause(10) //time.sleep(0.01);
@@ -102,14 +105,13 @@ class ICM20948 {
         this.write(ICM20948_I2C_MST_CTRL, 0x4D);
         this.write(ICM20948_I2C_MST_DELAY_CTRL, 0x01);
 
-        if (this.mag_read(AK09916_WIA) != AK09916_CHIP_ID) {
-            // throw RuntimeError('Unable to find AK09916');
-            control.panic(AK09916_NOT_FOUND)
-        }
         // Reset the magnetometer
         this.mag_write(AK09916_CNTL3, 0x01);
         while (this.mag_read(AK09916_CNTL3) == 0x01) {
             control.waitMicros(100) //time.sleep(0.0001);
+        }
+        if (this.mag_read(AK09916_WIA) == AK09916_CHIP_ID) {
+            this.status |= MAG_FOUND
         }
     }
 
@@ -193,6 +195,9 @@ class ICM20948 {
         return this.read_bytes(ICM20948_EXT_SLV_SENS_DATA_00, length);
     }
 
+    get_status() {
+        return this.status
+    }
 
     magnetometer_ready() {
         /* Check the magnetometer status ready bit. */
