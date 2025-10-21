@@ -8,18 +8,18 @@ const ICM20948_BANK_SEL = 0x7f;
 const ICM20948_NOT_FOUND = 222; // Panic code!
 
 
-const ICM20948_I2C_MST_ODR_CONFIG = 0x00;
-const ICM20948_I2C_MST_CTRL = 0x01;
-const ICM20948_I2C_MST_DELAY_CTRL = 0x02;
-const ICM20948_I2C_SLV0_ADDR = 0x03;
-const ICM20948_I2C_SLV0_REG = 0x04;
-const ICM20948_I2C_SLV0_CTRL = 0x05;
-const ICM20948_I2C_SLV0_DO = 0x06;
+//const ICM20948_I2C_MST_ODR_CONFIG = 0x00;
+//const ICM20948_I2C_MST_CTRL = 0x01;
+//const ICM20948_I2C_MST_DELAY_CTRL = 0x02;
+//const ICM20948_I2C_SLV0_ADDR = 0x03;
+//const ICM20948_I2C_SLV0_REG = 0x04;
+//const ICM20948_I2C_SLV0_CTRL = 0x05;
+//const ICM20948_I2C_SLV0_DO = 0x06;
 const ICM20948_EXT_SLV_SENS_DATA_00 = 0x3B;
 
-const ICM20948_GYRO_SMPLRT_DIV = 0x00;
-const ICM20948_GYRO_CONFIG_1 = 0x01;
-const ICM20948_GYRO_CONFIG_2 = 0x02;
+//const ICM20948_GYRO_SMPLRT_DIV = 0x00;
+//const ICM20948_GYRO_CONFIG_1 = 0x01;
+//const ICM20948_GYRO_CONFIG_2 = 0x02;
 
 // Bank 0
 const ICM20948_WHO_AM_I = 0x00;
@@ -28,16 +28,75 @@ const ICM20948_PWR_MGMT_1 = 0x06;
 const ICM20948_PWR_MGMT_2 = 0x07;
 const ICM20948_INT_PIN_CFG = 0x0F;
 
-const ICM20948_ACCEL_SMPLRT_DIV_1 = 0x10;
-const ICM20948_ACCEL_SMPLRT_DIV_2 = 0x11;
-const ICM20948_ACCEL_INTEL_CTRL = 0x12;
-const ICM20948_ACCEL_WOM_THR = 0x13;
+//const ICM20948_ACCEL_SMPLRT_DIV_1 = 0x10;
+//const ICM20948_ACCEL_SMPLRT_DIV_2 = 0x11;
+//const ICM20948_ACCEL_INTEL_CTRL = 0x12;
+//const ICM20948_ACCEL_WOM_THR = 0x13;
 const ICM20948_ACCEL_CONFIG = 0x14;
 const ICM20948_ACCEL_XOUT_H = 0x2D;
 const ICM20948_GRYO_XOUT_H = 0x33;
 
 const ICM20948_TEMP_OUT_H = 0x39;
 const ICM20948_TEMP_OUT_L = 0x3A;
+
+// Bank 2
+const ICM20948_GYRO_SMPLRT_DIV = 0x00
+const ICM20948_GYRO_CONFIG_1 = 0x01
+const ICM20948_GYRO_CONFIG_1_GYRO_FS_SEL_MASK = 0b11111001
+const ICM20948_GYRO_CONFIG_1_GYRO_DLPCFCFG_MASK = 0b10001110
+const ICM20948_GYRO_CONFIG_2 = 0x02
+const ICM20948_ODR_ALIGN_EN = 0x09
+const ICM20948_ACCEL_SMPLRT_DIV_1 = 0x10
+const ICM20948_ACCEL_SMPLRT_DIV_2 = 0x11
+const ICM20948_ACCEL_INTEL_CTRL = 0x12
+const ICM20948_ACCEL_WOM_THR = 0x13
+const ICM20948_ACCEL_CONFIG_1 = 0x14
+const ICM20948_ACCEL_CONFIG_1_ACCEL_FS_SEL_MASK = 0b11111001
+const ICM20948_ACCEL_CONFIG_1_ACCEL_DLPFCFG_MASK = 0b10001110
+const ICM20948_ACCEL_CONFIG_2 = 0x15
+const ICM20948_PRS_ODR_CONFIG = 0x20
+const ICM20948_PRGM_START_ADDRH = 0x50
+const ICM20948_PRGM_START_ADDRL = 0x51
+const ICM20948_FSYNC_CONFIG = 0x52
+const ICM20948_TEMP_CONFIG = 0x53
+const ICM20948_MOD_CTRL_USR = 0x54
+const ICM20948_MOD_CTRL_USR_REG_LP_DMP_EN = 0x01
+
+// Bank 3
+const ICM20948_I2C_MST_ODR_CONFIG = 0x00
+const ICM20948_I2C_MST_CTRL = 0x01
+const ICM20948_I2C_MST_CTRL_MULTI = 0b10000000 //Multi master
+const ICM20948_I2C_MST_CTRL_NSR = 0x10 //Stop between reads
+const ICM20948_I2C_MST_DELAY_CTRL = 0x02
+const ICM20948_I2C_SLV0_ADDR = 0x03
+const ICM20948_I2C_SLV0_REG = 0x04
+const ICM20948_I2C_SLV0_CTRL = 0x05
+const ICM20948_I2C_SLV0_DO = 0x06
+const ICM20948_I2C_SLV1_ADDR = 0x07
+const ICM20948_I2C_SLV1_REG = 0x08
+const ICM20948_I2C_SLV1_CTRL = 0x09
+const ICM20948_I2C_SLV1_DO = 0x0A
+const ICM20948_I2C_SLV2_ADDR = 0x0B
+const ICM20948_I2C_SLV2_REG = 0x0C
+const ICM20948_I2C_SLV2_CTRL = 0x0D
+const ICM20948_I2C_SLV2_DO = 0x0E
+const ICM20948_I2C_SLV3_ADDR = 0x0F
+const ICM20948_I2C_SLV3_REG = 0x10
+const ICM20948_I2C_SLV3_CTRL = 0x11
+const ICM20948_I2C_SLV3_DO = 0x12
+const ICM20948_I2C_SLV4_ADDR = 0x13
+const ICM20948_I2C_SLV4_REG = 0x14
+const ICM20948_I2C_SLV4_CTRL = 0x15
+const ICM20948_I2C_SLV4_DO = 0x16
+const ICM20948_I2C_SLV4_DI = 0x16
+
+// Bank 3 COMMON
+const ICM20948_I2C_SLV_ADDR_RNW = 0x80
+const ICM20948_I2C_SLV_CTRL_SLV_ENABLE = 0x80
+const ICM20948_I2C_SLV_CTRL_BYTE_SWAP = 0x40
+const ICM20948_I2C_SLV_CTRL_REG_DIS = 0x20
+const ICM20948_I2C_SLV_CTRL_REG_GROUP = 0x10
+
 
 // Offset and sensitivity - defined in electrical characteristics, and TEMP_OUT_H/L of datasheet
 const ICM20948_TEMPERATURE_DEGREES_OFFSET = 21;
@@ -83,13 +142,27 @@ class ICM20948 {
         if (this.read(ICM20948_WHO_AM_I) == CHIP_ID) {
             this.status |= GYRO_FOUND
         }
-        this.write(ICM20948_PWR_MGMT_1, 0x80);
+        // Reset the chip
+        this.write(ICM20948_PWR_MGMT_1, 0x80); // 0x80=const ICM20948_PWR_MGMT_1_RST says: reset the chip
         basic.pause(10) //time.sleep(0.01);
-        this.write(ICM20948_PWR_MGMT_1, 0x01);
-        this.write(ICM20948_PWR_MGMT_2, 0x00);
+        this.write(ICM20948_PWR_MGMT_1, 0x01);  // 0x01=const ICM20948_PWR_MGMT_1_CLOCK_AUTO says: Set Clock Auto 
+        this.write(ICM20948_PWR_MGMT_2, 0x00);  // 0x00= says: Put all sensors On
+
+        // Configure I2C Master Clock
+        this.selectBank(3);
+        this.write(ICM20948_I2C_MST_CTRL, 0x10 | 0x07)  
+        //     bit 0x10 set says: Stop between reads; 0x07 selects 345.6kHzz / 46.67% duty cycle
+
+        // Activate I2C Master
+        this.selectBank(0);
+        this.write(ICM20948_USER_CTRL, 0x20) // bit 0x20 set says: I2C_MST_EN (I2C Master Enabled)
+
+        // Configure Output Data-rate
+        this.selectBank(2);
+        this.write(ICM20948_ODR_ALIGN_EN, 0x01) // Enables ODR start-time alignment
+
 
         this.selectBank(2);
-
         this.set_gyro_sample_rate(100);
         this.set_gyro_low_pass(true, 5);
         this.set_gyro_full_scale(250);
