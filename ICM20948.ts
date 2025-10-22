@@ -98,8 +98,9 @@ const ICM20948_TEMPERATURE_SENSITIVITY = 333.87;
 const ICM20948_ROOM_TEMP_OFFSET = 21;
 
 const AK09916_I2C_ADDR = 0x0c;
-const AK09916_CHIP_ID = 0x09;
-const AK09916_WIA2 = 0x01;
+
+const AK09916_WIA2 = 0x01;  // ID register
+    const AK09916_CHIP_ID = 0x09; // expected ID
 
 const AK09916_ST1 = 0x10;
     const AK09916_ST1_DOR = 0b00000010   // Data overflow bit
@@ -166,11 +167,11 @@ class ICM20948 {
         this.selectBank(2);
         this.write(ICM20948_ODR_ALIGN_EN, 0x01) // Enables ODR start-time alignment
 
-      
+    /*
         /*Check if we can access Magnetometer
         # enabling Slave 0 (the internal AK09916) Read AK_WIA2 through AK_I2C_ADD
         # reading result through ICM_EXT_SLV_SENS_DATA_00
-        */
+    
         // self.slave_config(0,     AK_I2C_ADDR, AK_WIA2, 1,      True, True, False, False, False)
         //                   slave, addr,        reg,     length, RnW,  En,   Swp,   Dis,   Grp, DO = None
 
@@ -184,6 +185,25 @@ class ICM20948 {
         this.write(ICM20948_I2C_SLV0_ADDR, slv_addr)    // targeting slave0 address,
         this.write(ICM20948_I2C_SLV0_REG, AK09916_WIA2) // ask for "Who am I" register
         this.write(ICM20948_I2C_SLV0_CTRL, slv_ctrl)    // go do it!
+        */
+
+        /*Check if we can access Magnetometer
+        # enabling Slave 4, Read AK_WIA2 through AK_I2C_ADD
+        # reading result through ICM_EXT_SLV_SENS_DATA_00
+        */
+        // self.slave_config(4,     AK_I2C_ADDR, AK_WIA2, 1,      True, True, False, False, False)
+        //                   slave, addr,        reg,     length, RnW,  En,   Swp,   Dis,   Grp, DO = None
+
+        let slv_addr = ICM20948_I2C_SLV4_ADDR | ICM20948_I2C_SLV_ADDR_RNW   // where to place data00 (allowing R/W)
+        let slv_reg = ICM20948_I2C_SLV4_REG                                 // which register to poll
+        let slv_ctrl = ICM20948_I2C_SLV_CTRL_SLV_ENABLE | 1                 // length = 1 byte (with enable bit set)
+        //let slv_do = ICM20948_I2C_SLV4_DO                                 // (no data output being requested here)
+
+
+        this.selectBank(3);
+        this.write(ICM20948_I2C_SLV4_ADDR, slv_addr)    // targeting slave0 address,
+        this.write(ICM20948_I2C_SLV4_REG, AK09916_WIA2) // ask for "Who am I" register
+        this.write(ICM20948_I2C_SLV4_CTRL, slv_ctrl)    // go do it!
 
         this.selectBank(0);
         // Now activate I2C Master so I2C_slave setup can be propagated to slave itself
