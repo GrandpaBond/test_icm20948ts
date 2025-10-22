@@ -3,25 +3,22 @@
 // (Also drawing insights from https://github.com/dobodu/ICM20948_DMP_Micropython/blob/main/icm20948.py)
 
 //namespace ICM {
-const CHIP_ID = 0xEA;
 const ICM20948_BANK_SEL = 0x7f;
 
-const ICM20948_NOT_FOUND = 222; // Panic code!
-
-
-
 // Bank 0
-const ICM20948_WHO_AM_I = 0x00;
+const ICM20948_WHO_AM_I = 0x00; // ID register
+    const CHIP_ID = 0xEA; // ID value expected
 const ICM20948_USER_CTRL = 0x03;
-
-const ICM20948_USER_CTRL_DMP_EN = 0b10000000
-const ICM20948_USER_CTRL_FIFO_EN = 0b01000000
-const ICM20948_USER_CTRL_I2C_MST_EN = 0b00100000
-const ICM20948_USER_CTRL_I2C_IF_DIS = 0b00010000
-const ICM20948_USER_CTRL_DMP_RST = 0b00001000
-const ICM20948_USER_CTRL_SRAM_RST = 0b00000100
-const ICM20948_USER_CTRL_I2C_MST_RST = 0b00000010
+    const ICM20948_USER_CTRL_DMP_EN      = 0b10000000
+    const ICM20948_USER_CTRL_FIFO_EN     = 0b01000000
+    const ICM20948_USER_CTRL_I2C_MST_EN  = 0b00100000
+    const ICM20948_USER_CTRL_I2C_IF_DIS  = 0b00010000
+    const ICM20948_USER_CTRL_DMP_RST     = 0b00001000
+    const ICM20948_USER_CTRL_SRAM_RST    = 0b00000100
+    const ICM20948_USER_CTRL_I2C_MST_RST = 0b00000010
 const ICM20948_PWR_MGMT_1 = 0x06;
+    const ICM20948_PWR_MGMT_1_RESET = 0x80
+const ICM20948_PWR_MGMT_1_CLOCK_AUTO = 0x01
 const ICM20948_PWR_MGMT_2 = 0x07;
 const ICM20948_INT_PIN_CFG = 0x0F;
 
@@ -62,8 +59,8 @@ const ICM20948_MOD_CTRL_USR_REG_LP_DMP_EN = 0x01
 // Bank 3
 const ICM20948_I2C_MST_ODR_CONFIG = 0x00
 const ICM20948_I2C_MST_CTRL = 0x01
-const ICM20948_I2C_MST_CTRL_MULTI = 0b10000000 //Multi master
-const ICM20948_I2C_MST_CTRL_NSR = 0x10 //Stop between reads
+    const ICM20948_I2C_MST_CTRL_MULTI = 0b10000000 //Multi master
+    const ICM20948_I2C_MST_CTRL_NSR   = 0b00010000 //Stop between reads
 const ICM20948_I2C_MST_DELAY_CTRL = 0x02
 const ICM20948_I2C_SLV0_ADDR = 0x03
 const ICM20948_I2C_SLV0_REG = 0x04
@@ -103,97 +100,105 @@ const ICM20948_ROOM_TEMP_OFFSET = 21;
 const AK09916_I2C_ADDR = 0x0c;
 const AK09916_CHIP_ID = 0x09;
 const AK09916_WIA2 = 0x01;
-const AK09916_NOT_FOUND = 333; // Panic code!
 
 const AK09916_ST1 = 0x10;
-const AK09916_ST1_DOR = 0b00000010   // Data overflow bit
-const AK09916_ST1_DRDY = 0b00000001  // Data ready bit
+    const AK09916_ST1_DOR = 0b00000010   // Data overflow bit
+    const AK09916_ST1_DRDY = 0b00000001  // Data ready bit
 const AK09916_HXL = 0x11;
 const AK09916_ST2 = 0x18;
-const AK09916_ST2_HOFL = 0b00001000  // Magnetic sensor overflow bit
+    const AK09916_ST2_HOFL = 0b00001000  // Magnetic sensor overflow bit
 const AK09916_CNTL2 = 0x31;
-const AK09916_CNTL2_MODE = 0b00001111;
-const AK09916_CNTL2_MODE_OFF = 0;
-const AK09916_CNTL2_MODE_SINGLE = 1;
-const AK09916_CNTL2_MODE_CONT1 = 2;
-const AK09916_CNTL2_MODE_CONT2 = 4;
-const AK09916_CNTL2_MODE_CONT3 = 6;
-const AK09916_CNTL2_MODE_CONT4 = 8;
-const AK09916_CNTL2_MODE_TEST = 16;
+    const AK09916_CNTL2_MODE = 0b00001111;
+    const AK09916_CNTL2_MODE_OFF = 0;
+    const AK09916_CNTL2_MODE_SINGLE = 1;
+    const AK09916_CNTL2_MODE_CONT1 = 2;
+    const AK09916_CNTL2_MODE_CONT2 = 4;
+    const AK09916_CNTL2_MODE_CONT3 = 6;
+    const AK09916_CNTL2_MODE_CONT4 = 8;
+    const AK09916_CNTL2_MODE_TEST = 16;
 const AK09916_CNTL3 = 0x32;
 
-const GYRO_FOUND = 0x01
-const MAG_FOUND = 0x02
+// high-level flags in ICM20948.status
+const STATUS_ICM_FOUND = 0b10000000
+const STATUS_MAG_FOUND = 0b01000000
 
 
 const ICM20948_EXT_SLV_SENS_DATA_00 = 0x3B; // slave 0 is magnetometer; this is where to read its data
 
 class ICM20948 {
-    registerBank: number
-    i2cAddress: number
-    status: number
+    i2cAddress: number  // I2C address of this ICM20948 chip
+    registerBank: number // currently-selected register bank
+    status: number  // flags indicating current status of the chip
 
     constructor(myAddress: number) {
         this.registerBank = -1; // currently-selected register-bank
         this.i2cAddress = myAddress; // I2C master address of ICM20948
-        this.status = 0
+        this.status = 0 // (awaiting initialisation)
 
+        // Check Chip ID telling Slave 0 to read
         this.selectBank(0);
         if (this.read(ICM20948_WHO_AM_I) == CHIP_ID) {
-            this.status |= GYRO_FOUND
+            this.status |= STATUS_ICM_FOUND
         }
-        // Reset the chip
-        this.write(ICM20948_PWR_MGMT_1, 0x80); // 0x80=const ICM20948_PWR_MGMT_1_RST says: reset the chip
+        // Reset the chip:
+        // read-modify-write ICM_PWR_MGMT_1 register in bank 0 to set the ICM_PWR_MGMT_1_RESET bit
+        let setting = this.read(ICM20948_PWR_MGMT_1)
+        setting |= ICM20948_PWR_MGMT_1_RESET
+        this.write(ICM20948_PWR_MGMT_1, setting); 
         basic.pause(10) //time.sleep(0.01);
-        this.write(ICM20948_PWR_MGMT_1, 0x01);  // 0x01=const ICM20948_PWR_MGMT_1_CLOCK_AUTO says: Set Clock Auto 
-        this.write(ICM20948_PWR_MGMT_2, 0x00);  // 0x00= says: Put all sensors On
+
+        // Set Clock Auto
+        this.write(ICM20948_PWR_MGMT_1, ICM20948_PWR_MGMT_1_CLOCK_AUTO);
+
+        // Don't disable any axes of GYRO or ACCEL
+        this.write(ICM20948_PWR_MGMT_2, 0x00);
 
         // Configure I2C Master Clock
         this.selectBank(3);
-        this.write(ICM20948_I2C_MST_CTRL, 0x10 | 0x07)  
-        //     bit 0x10 set says: Stop between reads; 0x07 selects 345.6kHzz / 46.67% duty cycle
+        this.write(ICM20948_I2C_MST_CTRL, ICM20948_I2C_MST_CTRL_NSR | 0x07)
+        //     NSR says: Stop between reads; 0x07 selects 345.6kHzz with 46.67% duty cycle
 
         // Activate I2C Master
         this.selectBank(0);
-        this.write(ICM20948_USER_CTRL, 0x20) // bit 0x20 set says: I2C_MST_EN (I2C Master Enabled)
+        this.write(ICM20948_USER_CTRL, 0x20) // bit 0x20 says: I2C_MST_EN (I2C Master Enabled)
 
         // Configure Output Data-rate
         this.selectBank(2);
         this.write(ICM20948_ODR_ALIGN_EN, 0x01) // Enables ODR start-time alignment
 
       
-        /*Check if we cas access Magnetometer
-        # enabling Slave 0 (the internal AK09916) Read AK_WIA through AK_I2C_ADD
+        /*Check if we can access Magnetometer
+        # enabling Slave 0 (the internal AK09916) Read AK_WIA2 through AK_I2C_ADD
         # reading result through ICM_EXT_SLV_SENS_DATA_00
         */
         // self.slave_config(0,     AK_I2C_ADDR, AK_WIA2, 1,      True, True, False, False, False)
         //                   slave, addr,        reg,     length, RnW,  En,   Swp,   Dis,   Grp, DO = None
 
-        let slv_addr = ICM20948_I2C_SLV0_ADDR | ICM20948_I2C_SLV_ADDR_RNW   // where to put data00 (allowing R/W)
+        let slv_addr = ICM20948_I2C_SLV0_ADDR | ICM20948_I2C_SLV_ADDR_RNW   // where to place data00 (allowing R/W)
         let slv_reg = ICM20948_I2C_SLV0_REG                                 // which register to poll
-        let slv_ctrl = 1 | ICM20948_I2C_SLV_CTRL_SLV_ENABLE                 // length = 1 byte (with enable bit set)
-        //let slv_do = ICM20948_I2C_SLV0_DO                                 // no data output being requested here
+        let slv_ctrl = ICM20948_I2C_SLV_CTRL_SLV_ENABLE | 1                 // length = 1 byte (with enable bit set)
+        //let slv_do = ICM20948_I2C_SLV0_DO                                 // (no data output being requested here)
 
 
         this.selectBank(3);
-        this.write(AK09916_I2C_ADDR, slv_addr) // target slave0 address 
-        this.write(ICM20948_I2C_SLV0_REG, AK09916_WIA2)
-        this.write(ICM20948_I2C_SLV0_CTRL, slv_ctrl)
+        this.write(ICM20948_I2C_SLV0_ADDR, slv_addr)    // targeting slave0 address,
+        this.write(ICM20948_I2C_SLV0_REG, AK09916_WIA2) // ask for "Who am I" register
+        this.write(ICM20948_I2C_SLV0_CTRL, slv_ctrl)    // go do it!
 
         this.selectBank(0);
-        //Activate I2C Master so I2C_slave setup can be propagated to slave itself
+        // Now activate I2C Master so I2C_slave setup can be propagated to slave itself
         // self.reg_config(0,    ICM_USER_CTRL, ICM_USER_CTRL_I2C_MST_EN, True)
         //                 bank, reg,           ctrl,                     enable=True):
         // perform read-modify-write on the register
-        let value = this.read(ICM20948_USER_CTRL)
-        value |= ICM20948_USER_CTRL_I2C_MST_EN
-
-
-        if (this.read(ICM20948_EXT_SLV_SENS_DATA_00) == AK09916_CHIP_ID) {
-            this.status |= MAG_FOUND
+        setting = this.read(ICM20948_USER_CTRL)
+        setting |= ICM20948_USER_CTRL_I2C_MST_EN 
+        // read back the result
+        let magId = this.read(ICM20948_EXT_SLV_SENS_DATA_00)
+        if (magId == AK09916_CHIP_ID) {
+            this.status |= STATUS_MAG_FOUND
         }
 
-       this.selectBank(3);
+        this.selectBank(3);
         basic.pause(10) //time.sleep(0.01);
 
         // Reset the magnetometer
