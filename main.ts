@@ -1,6 +1,5 @@
-const I2C_BUS = 0x68
 datalogger.mirrorToSerial(false)
-let sensor = new ICM20948(I2C_BUS)
+let sensor = new ICM20948(ICM20948_CHIP_ID, AK09916_I2C_ADDR)
 datalogger.log(datalogger.createCV("sensor init:", sensor.status))
 basic.showString("init:"+sensor.status)
 
