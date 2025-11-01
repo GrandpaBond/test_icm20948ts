@@ -1,9 +1,8 @@
 datalogger.mirrorToSerial(false)
-let sensor = new ICM20948(ICM20948_CHIP_ID, AK09916_I2C_ADDR)
+let sensor = new ICM20948(ICM20948_I2C_ADDR, AK09916_I2C_ADDR)
 pause(1000)
 datalogger.log(datalogger.createCV("sensor init:", sensor.status))
 basic.showString("init:"+sensor.status)
-
 
 let mag:number[], gyro:number[]
 input.onButtonPressed(Button.A, function() { 

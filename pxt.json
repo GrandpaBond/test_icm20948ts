@@ -11,7 +11,8 @@
         "main.ts",
         "README.md",
         "pins_extra.ts",
-        "ICM20948.ts"
+        "ICM20948.ts",
+        "dumpRegisters.ts"
     ],
     "testFiles": [
         "test.ts"

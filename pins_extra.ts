@@ -1,49 +1,34 @@
-/*
-function fetch_byte_reg(address: number, byte_reg: number, select: number): number {
+/*********  lowest-level I2C transfers ***********/
 
-    pins.i2cWriteNumber(MPX_ADDR, select, NumberFormat.Int8LE, false)
-    //  basic.pause(1)
-    pins.i2cWriteNumber(AS5600_ADDR, byte_reg, NumberFormat.Int8LE, false)
-    //  basic.pause(1)
-    return Ubyte(pins.i2cReadNumber(AS5600_ADDR, NumberFormat.Int8LE, false))
+/** Write value to this register on this I2C address. */
+function i2cWriteByte(address:number, register:number, value:number) {
+    let twoBytes = pins.createBuffer(2)
+    twoBytes[0] = register
+    twoBytes[1] = value
+    pins.i2cWriteBuffer(address, twoBytes, false)
+    control.waitMicros(100)
 }
-control.waitMicros(4)
-*/
 
-/*
-function fetch_word_reg(word_reg: number, select: number): number {
+/**  Read byte from a register on this I2C address. */
+function i2cReadByte(address: number, register: number) {
+    pins.i2cWriteNumber(address, register, NumberFormat.UInt8LE) // select register
+    return pins.i2cReadNumber(address, NumberFormat.UInt8LE, false) // read and return
+}
 
-    pins.i2cWriteNumber(MPX_ADDR, select, NumberFormat.Int8LE, false)
-    //  basic.pause(1)
-    pins.i2cWriteNumber(AS5600_ADDR, word_reg, NumberFormat.Int8LE, false)
-    //  basic.pause(1)
-    return Uword(pins.i2cReadNumber(AS5600_ADDR, NumberFormat.Int16BE, false))
+/** Read multiple byte(s) from this I2C address, starting from given register. */
+function i2cReadData(address: number, register: number, length = 1) {
+    let buffer = pins.createBuffer(length)
+    pins.i2cWriteNumber(address, register, NumberFormat.UInt8LE) // select register
+    buffer = pins.i2cReadBuffer(address, length, false) //read and return
+    return buffer
 }
-*/
-/*
-function getreg(reg: number): number {
-    pins.i2cWriteNumber(BME280_I2C_ADDR, reg, NumberFormat.UInt8BE);
-    return pins.i2cReadNumber(BME280_I2C_ADDR, NumberFormat.UInt8BE);
-}
-*/
 
-/*
-function getInt8LE(reg: number): number {
-    pins.i2cWriteNumber(BME280_I2C_ADDR, reg, NumberFormat.UInt8BE);
-    return pins.i2cReadNumber(BME280_I2C_ADDR, NumberFormat.Int8LE);
+/** Modify flags in a register on this I2C address */
+function i2cRegisterFlags(address: number, register: number, unsetMask: number, setMask: number) {
+    let setting = i2cReadByte(address, register)
+    setting &= (0xff ^ unsetMask)
+    setting |= setMask
+    i2cWriteByte(address, register, setting)
+    control.waitMicros(10)
 }
-*/
-
-/*
-function getUInt16LE(reg: number): number {
-    pins.i2cWriteNumber(BME280_I2C_ADDR, reg, NumberFormat.UInt8BE);
-    return pins.i2cReadNumber(BME280_I2C_ADDR, NumberFormat.UInt16LE);
-}
-*/
-
-/*
-function getInt16LE(reg: number): number {
-    pins.i2cWriteNumber(BME280_I2C_ADDR, reg, NumberFormat.UInt8BE);
-    return pins.i2cReadNumber(BME280_I2C_ADDR, NumberFormat.Int16LE);
-}
-*/
+//************************************************************************** */
