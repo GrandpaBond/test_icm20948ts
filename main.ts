@@ -1,5 +1,11 @@
-datalogger.mirrorToSerial(false)
+datalogger.mirrorToSerial(true)
+serial.redirectToUSB()
+serial.writeLine("HELLO WORLD")
+
+
+datalogger.log(datalogger.createCV("starting up", 12345))
 let sensor = new ICM20948(ICM20948_I2C_ADDR, AK09916_I2C_ADDR)
+sensor.dumpRegisters(0)
 pause(1000)
 datalogger.log(datalogger.createCV("sensor init:", sensor.status))
 basic.showString("init:"+sensor.status)
