@@ -145,7 +145,7 @@ class ICM20948 {
         // *** Before trying anything, reset the chip:
         this.useBank(0)
         // set the ICM_PWR_MGMT_1_RESET bit in ICM_PWR_MGMT_1 register
-        this.registerFlags(ICM20948_PWR_MGMT_1, 0, ICM20948_PWR_MGMT_1_RESET)
+        this.registerFlags(this.icmAddress, ICM20948_PWR_MGMT_1, 0, ICM20948_PWR_MGMT_1_RESET)
         pause(100)
 
         // *** Am I there?
@@ -155,30 +155,25 @@ class ICM20948 {
             basic.showIcon(IconNames.Heart)
             pause(1000)
         }
-        /*let setting = this.readByte(ICM20948_PWR_MGMT_1)
-        setting |= ICM20948_PWR_MGMT_1_RESET
-        this.writeByte(ICM20948_PWR_MGMT_1, setting); 
-        basic.pause(10) //time.sleep(0.01);
-        */
 
         // Set Clock Auto
-        this.writeByte(ICM20948_PWR_MGMT_1, ICM20948_PWR_MGMT_1_CLOCK_AUTO);
+        this.writeByte(this.icmAddress, ICM20948_PWR_MGMT_1, ICM20948_PWR_MGMT_1_CLOCK_AUTO);
 
-        // Don't disable any axes of GYRO or ACCEL
-        this.writeByte(ICM20948_PWR_MGMT_2, 0x00);
+        // Make sure we aren't disabling any axes of GYRO or ACCEL
+        this.writeByte(this.icmAddress, ICM20948_PWR_MGMT_2, 0x00);
 
         // Configure I2C Master Clock
         this.useBank(3);
-        this.writeByte(ICM20948_I2C_MST_CTRL, ICM20948_I2C_MST_CTRL_NSR | 0x07)
+        this.writeByte(this.icmAddress, ICM20948_I2C_MST_CTRL, ICM20948_I2C_MST_CTRL_NSR | 0x07)
         //     NSR says:Stop between reads; 0x07 selects 345.6kHzz with 46.67% duty cycle
 
-        // Activate I2C Master
-        this.useBank(0);
-        this.writeByte(ICM20948_USER_CTRL, 0x20) // bit 0x20 says:I2C_MST_EN (I2C Master Enabled)
+        // Activate I2C Master?
+        //this.useBank(0);
+        //this.writeByte(this.icmAddress, ICM20948_USER_CTRL, 0x20) // bit 0x20 says:I2C_MST_EN (I2C Master Enabled)
 
         // Configure Output Data-rate
         this.useBank(2);
-        this.writeByte(ICM20948_ODR_ALIGN_EN, 0x01) // Enables ODR start-time alignment
+        this.writeByte(this.icmAddress, ICM20948_ODR_ALIGN_EN, 0x01) // Enables ODR start-time alignment
 
     /*
         /*Check if we can access Magnetometer
@@ -203,7 +198,7 @@ class ICM20948 {
         /*Check if we can access Magnetometer
         # enabling Slave 4, Read AK_WIA2 through AK_I2C_ADD
         # reading result through ICM_EXT_SLV_SENS_DATA_00
-        */
+       
 
 
         // self.slave_config(4,     AK_I2C_ADDR, AK_WIA2, 1,      True, True, False, False, False)
@@ -216,9 +211,9 @@ class ICM20948 {
 
 
         this.useBank(3);
-        this.writeByte(ICM20948_I2C_SLV4_ADDR, slv_addr)    // targeting slave0 address,
-        this.writeByte(ICM20948_I2C_SLV4_REG, AK09916_WIA2) // ask for "Who am I" register
-        this.writeByte(ICM20948_I2C_SLV4_CTRL, slv_ctrl)    // go do it!
+        this.writeByte(this.icmAddress, ICM20948_I2C_SLV4_ADDR, slv_addr)    // targeting slave0 address,
+        this.writeByte(this.icmAddress, ICM20948_I2C_SLV4_REG, AK09916_WIA2) // ask for "Who am I" register
+        this.writeByte(this.icmAddress, ICM20948_I2C_SLV4_CTRL, slv_ctrl)    // go do it!
 
         this.useBank(0);
 
@@ -227,16 +222,23 @@ class ICM20948 {
         // self.reg_config(0,    ICM_USER_CTRL, ICM_USER_CTRL_I2C_MST_EN, True)
         //                 bank, reg,           ctrl,                     enable=True):
         // perform read-modify-write on the register
-        this.registerFlags(ICM20948_USER_CTRL, 0, ICM20948_USER_CTRL_I2C_MST_EN)
+        this.registerFlags(this.icmAddress, ICM20948_USER_CTRL, 0, ICM20948_USER_CTRL_I2C_MST_EN)
 
         // read back the result
-        let magId = this.readByte(ICM20948_EXT_SLV_SENS_DATA_00)
+        let magId = this.readByte(this.icmAddress, ICM20948_EXT_SLV_SENS_DATA_00)
         if (magId == AK09916_CHIP_ID) {
             this.status |= STATUS_MAG_FOUND
         }
 
         this.useBank(3);
         basic.pause(10) //time.sleep(0.01);
+ */
+        this.checkForAK09916()
+
+        if ((this.status & STATUS_MAG_FOUND) > 0) {
+            basic.showIcon(IconNames.Happy)
+            pause(1000)
+        }
 
         // Reset the magnetometer
         this.magWriteByte(AK09916_CNTL3, 0x01);
@@ -244,16 +246,6 @@ class ICM20948 {
             control.waitMicros(100) //time.sleep(0.0001);
         }
 
-        /* now check ID up to 10 times
-        for (let i=0;i<10;i++) {
-            this.write(ICM20948_I2C_MST_CTRL, 0x4D);
-            basic.pause(10) //time.sleep(0.01);
-            this.write(ICM20948_I2C_MST_DELAY_CTRL, 0x01);
-            basic.pause(10) //time.sleep(0.01);
-            if (this.mag_read(AK09916_WIA2) == AK09916_CHIP_ID) {
-            }
-        }
-        */
 
         this.useBank(2);
         this.set_gyro_sample_rate(100);
@@ -266,7 +258,7 @@ class ICM20948 {
 
         this.useBank(0);
         basic.pause(10) //time.sleep(0.01);
-        this.writeByte(ICM20948_INT_PIN_CFG, 0x30);
+        this.writeByte(this.icmAddress, ICM20948_INT_PIN_CFG, 0x30);
         basic.pause(10) //time.sleep(0.01);
 
  
@@ -274,17 +266,27 @@ class ICM20948 {
 
     /**  Check main ICM Chip ID */
     checkForICM20948() {this.useBank(0);
-        if (this.readByte(ICM20948_WHO_AM_I) == ICM20948_CHIP_ID) {
+        if (this.readByte(this.icmAddress, ICM20948_WHO_AM_I) == ICM20948_CHIP_ID) {
             this.status |= STATUS_ICM_FOUND
         }
     }
 
 
+    /* now check ID up to 10 times
+    for (let i=0;i<10;i++) {
+        this.write(ICM20948_I2C_MST_CTRL, 0x4D);
+        basic.pause(10) //time.sleep(0.01);
+        this.write(ICM20948_I2C_MST_DELAY_CTRL, 0x01);
+        basic.pause(10) //time.sleep(0.01);
+        if (this.mag_read(AK09916_WIA2) == AK09916_CHIP_ID) {
+        }
+    }
+    */
     /**  Check magnetometer sub-chip ID */
     checkForAK09916() {
         let id = -1
         if (this.magIsDirect) {
-            id = this.readByte(AK09916_WIA2)
+            id = this.readByte(this.icmAddress, AK09916_WIA2)
         } else {
             // we need a slave read for this register
             id = this.magReadByte(AK09916_WIA2)
@@ -293,6 +295,7 @@ class ICM20948 {
             this.status |= STATUS_MAG_FOUND
         }
     }
+
     get_status() {
         return this.status
     }
@@ -347,7 +350,7 @@ class ICM20948 {
 
         // Read accelerometer full scale range and
         // use it to compensate the reading to gs
-        let scale = (this.readByte(ICM20948_ACCEL_CONFIG) & 0x06) >> 1;
+        let scale = (this.readByte(this.icmAddress, ICM20948_ACCEL_CONFIG) & 0x06) >> 1;
 
         // scale ranges from section 3.2 of the datasheet
         let gs = [16384.0, 8192.0, 4096.0, 2048.0][scale];
@@ -358,7 +361,7 @@ class ICM20948 {
 
         // Read back the degrees per second rate and
         // use it to compensate the reading to dps
-        scale = (this.readByte(ICM20948_GYRO_CONFIG_1) & 0x06) >> 1;
+        scale = (this.readByte(this.icmAddress, ICM20948_GYRO_CONFIG_1) & 0x06) >> 1;
 
         // scale ranges from section 3.1 of the datasheet
         let dps = [131, 65.5, 32.8, 16.4][scale];
@@ -377,26 +380,26 @@ class ICM20948 {
         //rate = Number((1125.0 / rate) - 1);
         rate = (1125.0 / rate) - 1;
         // TODO maybe use struct to pack and then this.write_bytes
-        this.writeByte(ICM20948_ACCEL_SMPLRT_DIV_1, (rate >> 8) & 0xff);
-        this.writeByte(ICM20948_ACCEL_SMPLRT_DIV_2, rate & 0xff);
+        this.writeByte(this.icmAddress, ICM20948_ACCEL_SMPLRT_DIV_1, (rate >> 8) & 0xff);
+        this.writeByte(this.icmAddress, ICM20948_ACCEL_SMPLRT_DIV_2, rate & 0xff);
     }
 
     set_accelerometer_full_scale(scale = 16) {
         /* Set the accelerometer fulls cale range to +- the supplied value. */
         this.useBank(2);
-        let value = this.readByte(ICM20948_ACCEL_CONFIG) & 0b11111001;
+        let value = this.readByte(this.icmAddress, ICM20948_ACCEL_CONFIG) & 0b11111001;
         ///////value |= { 2:0b00, 4:0b01, 8:0b10, 16:0b11 }[scale] << 1;
-        this.writeByte(ICM20948_ACCEL_CONFIG, value);
+        this.writeByte(this.icmAddress, ICM20948_ACCEL_CONFIG, value);
     }
 
     set_accelerometer_low_pass(enabled = true, mode = 5) {
         /* Configure the accelerometer low pass filter. */
         this.useBank(2);
-        let value = this.readByte(ICM20948_ACCEL_CONFIG) & 0b10001110;
+        let value = this.readByte(this.icmAddress, ICM20948_ACCEL_CONFIG) & 0b10001110;
         if (enabled) {
             value |= 0b1;
             value |= (mode & 0x07) << 4;
-            this.writeByte(ICM20948_ACCEL_CONFIG, value);
+            this.writeByte(this.icmAddress, ICM20948_ACCEL_CONFIG, value);
         }
     }
 
@@ -405,26 +408,26 @@ class ICM20948 {
         this.useBank(2);
         // 125Hz sample rate - 1.125 kHz / (1 + rate)
         rate = (1125.0 / rate) - 1;
-        this.writeByte(ICM20948_GYRO_SMPLRT_DIV, rate);
+        this.writeByte(this.icmAddress, ICM20948_GYRO_SMPLRT_DIV, rate);
     }
 
     set_gyro_full_scale(scale = 250) {
         /* Set the gyro full scale range to +- supplied value. */
         this.useBank(2);
-        let value = this.readByte(ICM20948_GYRO_CONFIG_1) & 0b11111001;
+        let value = this.readByte(this.icmAddress, ICM20948_GYRO_CONFIG_1) & 0b11111001;
         /////value |= { 250:0b00, 500:0b01, 1000:0b10, 2000:0b11 }[scale] << 1;
-        this.writeByte(ICM20948_GYRO_CONFIG_1, value);
+        this.writeByte(this.icmAddress, ICM20948_GYRO_CONFIG_1, value);
     }
 
     set_gyro_low_pass(enabled = true, mode = 5) {
         /* Configure the gyro low pass filter. */
         this.useBank(2);
-        let value = this.readByte(ICM20948_GYRO_CONFIG_1) & 0b10001110;
+        let value = this.readByte(this.icmAddress, ICM20948_GYRO_CONFIG_1) & 0b10001110;
         if (enabled) {
             value |= 0b1;
         }
         value |= (mode & 0x07) << 4;
-        this.writeByte(ICM20948_GYRO_CONFIG_1, value);
+        this.writeByte(this.icmAddress, ICM20948_GYRO_CONFIG_1, value);
     }
 
     read_temperature() {
@@ -445,7 +448,7 @@ class ICM20948 {
     useMagDirect() {
     /** set up I2C access to AK09916 magnetometer in Pass-Through mode */
         this.useBank(0) 
-        this.registerFlags(ICM20948_USER_CTRL,  // in the USER_CTRL register...
+        this.registerFlags(this.icmAddress, ICM20948_USER_CTRL,  // in the USER_CTRL register...
             ICM20948_USER_CTRL_I2C_MST_EN,  // clear the I2C_MST_EN bit
             ICM20948_INT_PIN_CFG_BYPASS_EN)  // and set the BYPASS_EN bit
         this.magIsDirect = true
@@ -454,7 +457,7 @@ class ICM20948 {
     useMagSlave() {
     /** prepare for I2C access to AK09916 magnetometer in Master-Slave mode */
         this.useBank(0)
-        this.registerFlags(ICM20948_USER_CTRL,  // in the USER_CTRL register...
+        this.registerFlags(this.icmAddress, ICM20948_USER_CTRL,  // in the USER_CTRL register...
             ICM20948_INT_PIN_CFG_BYPASS_EN,  // clear the BYPASS_EN bit
             ICM20948_USER_CTRL_I2C_MST_EN)  // and set the I2C_MST_EN bit
         this.magIsDirect = false
@@ -465,7 +468,7 @@ class ICM20948 {
         -In bank 3, set the I2C master clock speed in the I2C_MST_CTRL register 
         (400 kHz is common) and the output data rate (ODR) for the auxiliary sensors 
         in the I2C_MST_ODR_CONFIG register. */
-        this.writeByte(ICM20948_I2C_MST_CTRL, ICM20948_I2C_MST_CTRL_NSR | 0x07)
+        this.writeByte(this.icmAddress, ICM20948_I2C_MST_CTRL, ICM20948_I2C_MST_CTRL_NSR | 0x07)
         this.useBank(3)
     }
 
@@ -473,7 +476,7 @@ class ICM20948 {
     /** Nominate a register bank */
     useBank(value: number) {
         if (!(this.registerBank == value)) {
-            this.writeByte(ICM20948_BANK_SEL, value << 4); // bank field is top four bits
+            this.writeByte(this.icmAddress, ICM20948_BANK_SEL, value << 4); // bank field is top four bits
             this.registerBank = value;
         }
     }
@@ -482,9 +485,9 @@ class ICM20948 {
         /**  Write a byte indirectly to a magnetometer register */
         // Set up a write access using Slave 0 register-set in bank 3
         this.useBank(3);
-        this.writeByte(ICM20948_I2C_SLV0_ADDR, AK09916_I2C_ADDR) // point at AK09916
-        this.writeByte(ICM20948_I2C_SLV0_REG, reg);
-        this.writeByte(ICM20948_I2C_SLV0_DO, value);
+        this.writeByte(this.icmAddress, ICM20948_I2C_SLV0_ADDR, AK09916_I2C_ADDR) // point at AK09916
+        this.writeByte(this.icmAddress, ICM20948_I2C_SLV0_REG, reg);
+        this.writeByte(this.icmAddress, ICM20948_I2C_SLV0_DO, value);
         this.useBank(0);
 
         this.magSlaveGo();
@@ -492,26 +495,26 @@ class ICM20948 {
     }
 
     magReadByte(reg: number) {
-        /* Read a byte from the slave magnetometer. */
+        /** Read a byte from the slave magnetometer. */
         // Set up a read access using Slave 0 register-set in bank 3
         this.useBank(3);
-        this.writeByte(ICM20948_I2C_SLV0_ADDR, AK09916_I2C_ADDR | ICM20948_I2C_SLV_ADDR_RNW);
-        this.writeByte(ICM20948_I2C_SLV0_REG, reg);
-        this.writeByte(ICM20948_I2C_SLV0_DO, ICM20948_EXT_SLV_SENS_DATA_00);
+        this.writeByte(this.icmAddress, ICM20948_I2C_SLV0_ADDR, AK09916_I2C_ADDR | ICM20948_I2C_SLV_ADDR_RNW);
+        this.writeByte(this.icmAddress, ICM20948_I2C_SLV0_REG, reg);
+        this.writeByte(this.icmAddress, ICM20948_I2C_SLV0_DO, ICM20948_EXT_SLV_SENS_DATA_00);
 
         this.useBank(0);
         this.magSlaveGo();
 
-        return this.readByte(ICM20948_EXT_SLV_SENS_DATA_00);
+        return this.readByte(this.icmAddress, ICM20948_EXT_SLV_SENS_DATA_00);
     }
 
     magReadData(reg: number, length = 1) {
-        /* Read up to 24 bytes from the slave magnetometer. */
+        /** Read up to 24 bytes from the slave magnetometer. */
         this.useBank(3);
-        this.writeByte(ICM20948_I2C_SLV0_CTRL, 0x80 | 0x08 | length);
-        this.writeByte(ICM20948_I2C_SLV0_ADDR, AK09916_I2C_ADDR | ICM20948_I2C_SLV_ADDR_RNW);
-        this.writeByte(ICM20948_I2C_SLV0_REG, reg);
-        this.writeByte(ICM20948_I2C_SLV0_DO, ICM20948_EXT_SLV_SENS_DATA_00);
+        this.writeByte(this.icmAddress, ICM20948_I2C_SLV0_CTRL, 0x80 | 0x08 | length);
+        this.writeByte(this.icmAddress, ICM20948_I2C_SLV0_ADDR, AK09916_I2C_ADDR | ICM20948_I2C_SLV_ADDR_RNW);
+        this.writeByte(this.icmAddress, ICM20948_I2C_SLV0_REG, reg);
+        this.writeByte(this.icmAddress, ICM20948_I2C_SLV0_DO, ICM20948_EXT_SLV_SENS_DATA_00);
         this.useBank(0);
         this.magSlaveGo();
 
@@ -519,58 +522,58 @@ class ICM20948 {
     }
 
     magSlaveGo() {
-        /** initiate Slave transfer */
-        let user = this.readByte(ICM20948_USER_CTRL);
-        this.writeByte(ICM20948_USER_CTRL, user | 0x20);
-        control.waitMicros(5000) //time.sleep(0.005);
-        this.writeByte(ICM20948_USER_CTRL, user);
+        /** initiate Slave transfer by setting ICM20948_USER_CTRL_I2C_MST_EN for a while */
+        this.registerFlags(this.icmAddress, ICM20948_USER_CTRL, 0, ICM20948_USER_CTRL_I2C_MST_EN)
+        control.waitMicros(5000)
+        this.registerFlags(this.icmAddress, ICM20948_USER_CTRL, ICM20948_USER_CTRL_I2C_MST_EN, 0)
     }
 
 
     /** Modify flags in a register in the magnetometer */
-    magRegisterFlags(
-        register: number,
-        unsetMask: number,
-        setMask: number) {
-        let setting = this.magReadByte(register)
-        setting &= (0xff ^ unsetMask)
-        setting |= setMask
-        this.magWriteByte(register, setting)
-        control.waitMicros(10)
+    magRegisterFlags(register: number, unsetMask: number, setMask: number) {
+        if (this.magIsDirect) {
+            this.registerFlags(this.magAddress, register, unsetMask, setMask)
+        } else { // use indirect Slave transfers...
+            let setting = this.magReadByte(register)
+            setting &= (0xff ^ unsetMask)
+            setting |= setMask
+            this.magWriteByte(register, setting)
+            control.waitMicros(10)
+        }
     }
 
-    /** Write value to this register of current bank. */
-    writeByte(register: number, value: number) {
+
+/*********  lowest-level I2C transfers ***********/
+
+    /** Write value to this register on this I2C address. */
+    writeByte(address:number, register:number, value:number) {
         let twoBytes = pins.createBuffer(2)
         twoBytes[0] = register
         twoBytes[1] = value
-        pins.i2cWriteBuffer(this.icmAddress, twoBytes, false)
+        pins.i2cWriteBuffer(address, twoBytes, false)
         control.waitMicros(100)
     }
 
-    /**  Read byte from a register in the current bank. */
-    readByte(register: number) {
-        pins.i2cWriteNumber(this.icmAddress, register, NumberFormat.UInt8LE) // select register
-        return pins.i2cReadNumber(this.icmAddress, NumberFormat.UInt8LE, false) // read and return
+    /**  Read byte from a register on this I2C address. */
+    readByte(address:number, register:number) {
+        pins.i2cWriteNumber(address, register, NumberFormat.UInt8LE) // select register
+        return pins.i2cReadNumber(address, NumberFormat.UInt8LE, false) // read and return
     }
 
-    /** Read multiple byte(s) starting from a register address in the current bank. */
-    readData(register: number, length = 1) {
+    /** Read multiple byte(s) from this I2C address, starting from given register. */
+    readData(address:number, register:number, length = 1) {
         let buffer = pins.createBuffer(length)
-        pins.i2cWriteNumber(this.icmAddress, register, NumberFormat.UInt8LE) // select register
-        buffer = pins.i2cReadBuffer(this.icmAddress, length, false) //read and return
+        pins.i2cWriteNumber(address, register, NumberFormat.UInt8LE) // select register
+        buffer = pins.i2cReadBuffer(address, length, false) //read and return
         return buffer
     }
 
-    /** Modify flags in a register in the current bank */
-    registerFlags(
-        register: number,
-        unsetMask: number,
-        setMask: number) {
-        let setting = this.readByte(register)
+    /** Modify flags in a register on this I2C address */
+    registerFlags(address: number, register:number, unsetMask:number, setMask:number) {
+        let setting = this.readByte(address, register)
         setting &= (0xff ^ unsetMask)
         setting |= setMask
-        this.writeByte(register, setting)
+        this.writeByte(address, register, setting)
         control.waitMicros(10)
     }
 //************************************************************************** */
