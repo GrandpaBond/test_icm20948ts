@@ -34,6 +34,8 @@ const ICM20948_GRYO_XOUT_H = 0x33;
 
 const ICM20948_TEMP_OUT_H = 0x39;
 const ICM20948_TEMP_OUT_L = 0x3A;
+const ICM20948_EXT_SLV_SENS_DATA_00 = 0x3B; // where slave data goes
+
 
 // Bank 2
 const ICM20948_GYRO_SMPLRT_DIV = 0x00
@@ -125,9 +127,6 @@ const AK09916_CNTL3 = 0x32;
 const STATUS_ICM_FOUND = 0b10000000
 const STATUS_MAG_FOUND = 0b01000000
 
-
-const ICM20948_EXT_SLV_SENS_DATA_00 = 0x3B; // slave 0 is magnetometer; this is where to read its data
-
 class ICM20948 {
     icm: number // I2C address of this ICM20948 chip
     mag: number // I2C address of AK09916 sub-chip
@@ -145,14 +144,15 @@ class ICM20948 {
 
         // *** Before trying anything, reset the chip:
         this.useBank(0)
-
         // set the ICM_PWR_MGMT_1_RESET bit in ICM_PWR_MGMT_1 register
         i2cRegisterFlags(this.icm, ICM20948_PWR_MGMT_1, 0, ICM20948_PWR_MGMT_1_RESET)
         pause(100)
+        basic.showString("resetting")
         //datalogger.log(datalogger.createCV("reset requested", 12345))
         let myID = i2cReadByte(this.icm,ICM20948_WHO_AM_I)
 
-        serial.writeLine("WhoAmI says:"+myID)
+        basic.showString("WhoAmI says:" + myID)
+        serial.writeLine("WhoAmI says:" + myID)
 
         // *** Am I there?
         this.checkForICM20948()

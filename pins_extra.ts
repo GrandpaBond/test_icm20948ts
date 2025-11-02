@@ -11,6 +11,8 @@ function i2cWriteByte(address:number, register:number, value:number) {
 
 /**  Read byte from a register on this I2C address. */
 function i2cReadByte(address: number, register: number) {
+    serial.writeLine("reading byte at "+ toHex(register) + "on address "+ address)
+    
     pins.i2cWriteNumber(address, register, NumberFormat.UInt8LE) // select register
     return pins.i2cReadNumber(address, NumberFormat.UInt8LE, false) // read and return
 }
