@@ -1,11 +1,9 @@
 //datalogger.mirrorToSerial(true)
 serial.redirectToUSB()
+basic.showString("Hello!")
 serial.writeLine("STARTING UP...")
 serial.writeLine("toHex(42) = "+toHex(42))
 
-
-basic.showString("Hello!")
-//datalogger.log(datalogger.createCV("starting up", 12345))
 let sensor = new ICM20948(ICM20948_I2C_ADDR, AK09916_I2C_ADDR)
 
 basic.showString("sensor done")

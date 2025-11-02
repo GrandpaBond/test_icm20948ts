@@ -11,8 +11,6 @@ function i2cWriteByte(address:number, register:number, value:number) {
 
 /**  Read byte from a register on this I2C address. */
 function i2cReadByte(address: number, register: number) {
-    serial.writeLine("reading byte at "+ toHex(register) + "on address "+ address)
-    
     pins.i2cWriteNumber(address, register, NumberFormat.UInt8LE) // select register
     return pins.i2cReadNumber(address, NumberFormat.UInt8LE, false) // read and return
 }
@@ -36,6 +34,8 @@ function i2cRegisterFlags(address: number, register: number, unsetMask: number, 
 
 function toHex(byte:number){
     const hex = ["0","1","2","3","4","5","6","7","8","9","A","B","C","D","E","F"]
-    return hex[byte>>4]+hex[byte&0xf]
+    // HACK: insert a short delay here to help prevent serial output overruns elsewhere...
+    basic.pause(10)
+    return '0x'+hex[byte>>4]+hex[byte&0xf]
 }
 //************************************************************************** */
