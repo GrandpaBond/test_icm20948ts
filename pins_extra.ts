@@ -31,4 +31,9 @@ function i2cRegisterFlags(address: number, register: number, unsetMask: number, 
     i2cWriteByte(address, register, setting)
     control.waitMicros(10)
 }
+
+function toHex(byte:number){
+    const hex = ["0","1","2","3","4","5","6","7","8","9","A","B","C","D","E","F"]
+    return hex[byte>>4]+hex[byte&0xf]
+}
 //************************************************************************** */
