@@ -64,7 +64,7 @@ const   ICM20948_MOD_CTRL_USR_REG_LP_DMP_EN = 0x01
 const ICM20948_I2C_MST_ODR_CONFIG = 0x00
 const ICM20948_I2C_MST_CTRL = 0x01
 const   ICM20948_I2C_MST_CTRL_MULTI = 0b10000000 // Multi master
-const   ICM20948_I2C_MST_CTRL_NSR = 0b00010000 // Stop between reads
+const   ICM20948_I2C_MST_CTRL_NSR   = 0b00010000 // Stop between reads
 const ICM20948_I2C_MST_DELAY_CTRL = 0x02
 const ICM20948_I2C_SLV0_ADDR = 0x03
 const ICM20948_I2C_SLV0_REG = 0x04
@@ -89,11 +89,11 @@ const ICM20948_I2C_SLV4_DO = 0x16
 const ICM20948_I2C_SLV4_DI = 0x16
 
 // Bank 3 COMMON
-const   ICM20948_I2C_SLV_ADDR_RNW = 0x80 // set for Read (Not Write)
-const   ICM20948_I2C_SLV_CTRL_SLV_ENABLE = 0x80
-const   ICM20948_I2C_SLV_CTRL_BYTE_SWAP = 0x40
-const   ICM20948_I2C_SLV_CTRL_REG_DIS = 0x20
-const   ICM20948_I2C_SLV_CTRL_REG_GROUP = 0x10
+const   ICM20948_I2C_SLV_ADDR_RNW        = 0b10000000 // 0x80 // set for R(ead) N(ot) W(rite)
+const   ICM20948_I2C_SLV_CTRL_SLV_ENABLE = 0b10000000 // 0x80
+const   ICM20948_I2C_SLV_CTRL_BYTE_SWAP  = 0b01000000 // 0x40
+const   ICM20948_I2C_SLV_CTRL_REG_DIS    = 0b00100000 // 0x20
+const   ICM20948_I2C_SLV_CTRL_REG_GROUP  = 0b00010000 // 0x10
 
 
 // Offset and sensitivity - defined in electrical characteristics, and TEMP_OUT_H/L of datasheet
@@ -107,20 +107,20 @@ const AK09916_WIA2 = 0x01  // ID register
 const   AK09916_CHIP_ID = 0x09 // expected ID
 
 const AK09916_ST1 = 0x10
-const   AK09916_ST1_DOR = 0b00000010   // Data overflow bit
+const   AK09916_ST1_DOR  = 0b00000010   // Data overflow bit
 const   AK09916_ST1_DRDY = 0b00000001  // Data ready bit
-const AK09916_HXL = 0x11
-const AK09916_ST2 = 0x18
+const AK09916_HXL = 0x11 // first of 12 bytes of mag data (X-low byte)
+const AK09916_ST2 = 0x18  // after sampling, read this to unlock next sample
 const   AK09916_ST2_HOFL = 0b00001000  // Magnetic sensor overflow bit
 const AK09916_CNTL2 = 0x31
-const   AK09916_CNTL2_MODE = 0b00001111
-const   AK09916_CNTL2_MODE_OFF = 0
-const   AK09916_CNTL2_MODE_SINGLE = 1
-const   AK09916_CNTL2_MODE_CONT1 = 2
-const   AK09916_CNTL2_MODE_CONT2 = 4
-const   AK09916_CNTL2_MODE_CONT3 = 6
-const   AK09916_CNTL2_MODE_CONT4 = 8
-const   AK09916_CNTL2_MODE_TEST = 16
+const   AK09916_CNTL2_MODE    = 0b00001111
+const   AK09916_CNTL2_MODE_OFF    = 0x00
+const   AK09916_CNTL2_MODE_SINGLE = 0x01
+const   AK09916_CNTL2_MODE_CONT1 = 0x02
+const   AK09916_CNTL2_MODE_CONT2 = 0x04
+const   AK09916_CNTL2_MODE_CONT3 = 0x06
+const   AK09916_CNTL2_MODE_CONT4 = 0x08
+const   AK09916_CNTL2_MODE_TEST = 0b00010000
 const AK09916_CNTL3 = 0x32
 
 // high-level flags in ICM20948.status
@@ -230,13 +230,13 @@ class ICM20948 {
                 /////throw RuntimeError('Timeout waiting for Magnetometer Ready')
                 control.waitMicros(10) //time.sleep(0.00001)
             }
-            data = this.magReadData(AK09916_HXL, 6)
+            data = this.readMagData(AK09916_HXL, 6)
         }
         // Read ST2 to confirm read finished,
-        // needed for continuous modes
-        // mag_this.read(AK09916_ST2)
+        // (needed in continuous modes to unlock next sample)
+        this.readMagByte(AK09916_ST2)
 
-        //////x, y, z = struct.unpack('<hhh', bytearray(data))
+        // extract three 16-bit readings
         let x = data.getNumber(NumberFormat.UInt16LE, 0)
         let y = data.getNumber(NumberFormat.UInt16LE, 2)
         let z = data.getNumber(NumberFormat.UInt16LE, 4)
@@ -253,15 +253,17 @@ class ICM20948 {
 
     magIsReady() {
         /* Check the magnetometer status ready bit. */
-        return (this.magReadByte(AK09916_ST1) & 0x01) > 0
+        return ((this.readMagByte(AK09916_ST1) & AK09916_ST1_DRDY) > 0)
     }
 
-
+    // Accelerometer and Gyro readings are parked in the output space
     read_accelerometer_gyro_data() {
+
+
         this.useBank(0)
         let data = i2cReadData(ICM20948_ACCEL_XOUT_H, 12)
-        //ax, ay, az, gx, gy, gz = struct.unpack('>hhhhhh', bytearray(data))
-        //dissect 12 bytes into 6 words
+
+        //dissect 12 bytes into six 16-bit readings
         let ax = data.getNumber(NumberFormat.UInt16LE, 0)
         let ay = data.getNumber(NumberFormat.UInt16LE, 2)
         let az = data.getNumber(NumberFormat.UInt16LE, 4)
@@ -269,10 +271,10 @@ class ICM20948 {
         let gy = data.getNumber(NumberFormat.UInt16LE, 8)
         let gz = data.getNumber(NumberFormat.UInt16LE, 10)
 
-        this.useBank(2)
 
         // Read accelerometer full scale range and
-        // use it to compensate the reading to gs
+        // use it to convert the reading to gs
+        this.useBank(2)
         let scale = (i2cReadByte(this.icm, ICM20948_ACCEL_CONFIG) & 0x06) >> 1
 
         // scale ranges from section 3.2 of the datasheet
@@ -389,7 +391,15 @@ class ICM20948 {
     }
 
 
-    //********************************** Lowest-level I/O ********************************* */
+    //********************************** Low-level I/O ********************************* */
+
+    /** Nominate a register bank */
+    useBank(value: number) {
+        if (!(this.registerBank == value)) {
+            i2cWriteByte(this.icm, ICM20948_BANK_SEL, value << 4) // bank field is top four bits
+            this.registerBank = value
+        }
+    }
 
     useMagDirect() {
         /** set up I2C access to AK09916 magnetometer in Pass-Through mode */
@@ -412,23 +422,31 @@ class ICM20948 {
         this.magIsDirect = false
     }
 
-    /** Nominate a register bank */
-    useBank(value: number) {
-        if (!(this.registerBank == value)) {
-            i2cWriteByte(this.icm, ICM20948_BANK_SEL, value << 4) // bank field is top four bits
-            this.registerBank = value
-        }
+    // Wrappers to access magnetometer in either mode
+    writeMagByte(reg: number, value: number) {
+        return this.magIsDirect ? i2cWriteByte(this.mag, reg, value) 
+                                : this.magWriteByte(reg, value)
     }
 
-    magWriteByte(reg: number, value: number) {
+    readMagByte(reg:number) {
+        return this.magIsDirect ? i2cReadByte(this.mag, reg) 
+                                : this.magReadByte(reg)
+    }
+
+    readMagData(reg:number, length = 1) {
+        return this.magIsDirect ? i2cReadData(this.mag, reg, length)
+            : this.magReadData(reg, length)
+    }
+    
+    // Magnetometer I/O using Master-Slave mode
+
+    magWriteByte(reg:number, value:number) {
         /**  Write a byte indirectly to a magnetometer register */
         // Set up a write access using Slave 0 register-set in bank 3
         this.useBank(3)
         i2cWriteByte(this.icm, ICM20948_I2C_SLV0_ADDR, AK09916_I2C_ADDR) // point at AK09916
         i2cWriteByte(this.icm, ICM20948_I2C_SLV0_REG, reg)
         i2cWriteByte(this.icm, ICM20948_I2C_SLV0_DO, value)
-        this.useBank(0)
-
         this.magSlaveGo()
 
     }
@@ -440,8 +458,6 @@ class ICM20948 {
         i2cWriteByte(this.icm, ICM20948_I2C_SLV0_ADDR, AK09916_I2C_ADDR | ICM20948_I2C_SLV_ADDR_RNW)
         i2cWriteByte(this.icm, ICM20948_I2C_SLV0_REG, reg)
         i2cWriteByte(this.icm, ICM20948_I2C_SLV0_DO, ICM20948_EXT_SLV_SENS_DATA_00)
-
-        this.useBank(0)
         this.magSlaveGo()
 
         return i2cReadByte(this.icm, ICM20948_EXT_SLV_SENS_DATA_00)
@@ -454,7 +470,6 @@ class ICM20948 {
         i2cWriteByte(this.icm, ICM20948_I2C_SLV0_ADDR, AK09916_I2C_ADDR | ICM20948_I2C_SLV_ADDR_RNW)
         i2cWriteByte(this.icm, ICM20948_I2C_SLV0_REG, reg)
         i2cWriteByte(this.icm, ICM20948_I2C_SLV0_DO, ICM20948_EXT_SLV_SENS_DATA_00)
-        this.useBank(0)
         this.magSlaveGo()
 
         return i2cReadData(ICM20948_EXT_SLV_SENS_DATA_00, length)
@@ -462,6 +477,7 @@ class ICM20948 {
 
     magSlaveGo() {
         /** initiate Slave transfer by setting ICM20948_USER_CTRL_I2C_MST_EN for a while */
+        this.useBank(0)
         i2cRegisterFlags(this.icm, ICM20948_USER_CTRL, 0, ICM20948_USER_CTRL_I2C_MST_EN)
         // eventually, wait for slave to report data is ready?
         control.waitMicros(5000) // =5ms
