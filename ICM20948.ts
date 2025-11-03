@@ -170,12 +170,6 @@ class ICM20948 {
             pause(1000)
         }
 
-        // Reset the magnetometer
-        this.magWriteByte(AK09916_CNTL3, 0x01)
-        while (this.magReadByte(AK09916_CNTL3) == 0x01) {
-            control.waitMicros(100)
-        }
-
         // Set up the gyro and accelerometer
         this.useBank(2)
         this.set_gyro_sample_rate(100)
@@ -188,6 +182,8 @@ class ICM20948 {
 
         this.useBank(0)
         basic.pause(10) //time.sleep(0.01)
+
+        // ? clear interrupts
         i2cWriteByte(this.icm, ICM20948_INT_PIN_CFG, 0x30)
         basic.pause(10) //time.sleep(0.01)
 
@@ -221,7 +217,7 @@ class ICM20948 {
         return this.status
     }
 
-    read_magnetometer_data(timeout = 1.0) {
+    senseMag(timeout = 1.0) {
         this.magWriteByte(AK09916_CNTL2, 0x01)  // Trigger a single measurement
         let t_start = control.millis()
         let data: Buffer
@@ -257,8 +253,7 @@ class ICM20948 {
     }
 
     // Accelerometer and Gyro readings are parked in the output space
-    read_accelerometer_gyro_data() {
-
+    senseIcm() {
 
         this.useBank(0)
         let data = i2cReadData(ICM20948_ACCEL_XOUT_H, 12)
@@ -409,6 +404,7 @@ class ICM20948 {
         // in the INT_PIN_CFG register, set the BYPASS_EN bit
         i2cRegisterFlags(this.icm, ICM20948_INT_PIN_CFG, 0, ICM20948_INT_PIN_CFG_BYPASS_EN)   
         this.magIsDirect = true
+        this.magInitialise()
     }
 
 
@@ -420,10 +416,20 @@ class ICM20948 {
         // in the INT_PIN_CFG register, clear the BYPASS_EN bit
         i2cRegisterFlags(this.icm, ICM20948_INT_PIN_CFG, ICM20948_INT_PIN_CFG_BYPASS_EN, 0)
         this.magIsDirect = false
+        this.magInitialise()
     }
 
+    magInitialise() {
+        // Reset the magnetometer
+        this.magWriteByte(AK09916_CNTL3, 0x01)
+        while (this.magReadByte(AK09916_CNTL3) == 0x01) {
+            control.waitMicros(100)
+        }
+    }
+
+
     // Wrappers to access magnetometer in either mode
-    writeMagByte(reg: number, value: number) {
+    writeMagByte(reg:number, value:number) {
         return this.magIsDirect ? i2cWriteByte(this.mag, reg, value) 
                                 : this.magWriteByte(reg, value)
     }
@@ -451,7 +457,7 @@ class ICM20948 {
 
     }
 
-    magReadByte(reg: number) {
+    magReadByte(reg:number) {
         /** Read a byte from the slave magnetometer. */
         // Set up a read access using Slave 0 register-set in bank 3
         this.useBank(3)
@@ -463,7 +469,7 @@ class ICM20948 {
         return i2cReadByte(this.icm, ICM20948_EXT_SLV_SENS_DATA_00)
     }
 
-    magReadData(reg: number, length = 1) {
+    magReadData(reg:number, length = 1) {
         /** Read up to 24 bytes from the slave magnetometer. */
         this.useBank(3)
         i2cWriteByte(this.icm, ICM20948_I2C_SLV0_CTRL, 0x80 | 0x08 | length)
@@ -486,20 +492,20 @@ class ICM20948 {
 
 
     /** Modify flags in a register in the magnetometer */
-    magRegisterFlags(register: number, unsetMask: number, setMask: number) {
+    magRegisterFlags(reg:number, unsetMask:number, setMask:number) {
         if (this.magIsDirect) {
-            i2cRegisterFlags(this.mag, register, unsetMask, setMask)
+            i2cRegisterFlags(this.mag, reg, unsetMask, setMask)
         } else { // use indirect Slave transfers...
-            let setting = this.magReadByte(register)
+            let setting = this.magReadByte(reg)
             setting &= (0xff ^ unsetMask)
             setting |= setMask
-            this.magWriteByte(register, setting)
+            this.magWriteByte(reg, setting)
             control.waitMicros(10)
         }
     }
 
 
-    dumpRegisters(bank: number) {
+    dumpRegisters(bank:number) {
         switch (bank) {
             case 0:
                 // Bank 0:
@@ -579,14 +585,31 @@ class ICM20948 {
                 break
 
             case 4:
-                // Magnetometer:
-                serial.writeLine("AK09916_WIA2 = " + toHex(i2cReadByte(AK09916_I2C_ADDR, AK09916_WIA2)))
-                serial.writeLine("AK09916_ST1 = " + toHex(i2cReadByte(AK09916_I2C_ADDR, AK09916_ST1)))
-                serial.writeLine("AK09916_HXL = " + toHex(i2cReadByte(AK09916_I2C_ADDR, AK09916_HXL)))
-                serial.writeLine("AK09916_ST2 = " + toHex(i2cReadByte(AK09916_I2C_ADDR, AK09916_ST2)))
-                serial.writeLine("AK09916_CNTL2 = " + toHex(i2cReadByte(AK09916_I2C_ADDR, AK09916_CNTL2)))
-                serial.writeLine("AK09916_CNTL3 = " + toHex(i2cReadByte(AK09916_I2C_ADDR, AK09916_CNTL3)))
+                // Magnetometer 
+                serial.writeLine("AK09916_WIA2 = " + toHex(this.readMagByte(AK09916_WIA2)))
+                serial.writeLine("AK09916_ST1 = " + toHex(this.readMagByte(AK09916_ST1)))
+                this.dumpMagReadings("AK09916_HXL...", AK09916_HXL, 6) // sensor data
+                serial.writeLine("AK09916_ST2 = " + toHex(this.readMagByte(AK09916_ST2)))
+                serial.writeLine("AK09916_CNTL2 = " + toHex(this.readMagByte(AK09916_CNTL2)))
+                serial.writeLine("AK09916_CNTL3 = " + toHex(this.readMagByte(AK09916_CNTL3)))
                 break
+        }
+    }
+    /** dump some 2-byte little-endian ICM words */
+    dumpReadings(fromName: string, fromReg: number, length: number) {
+        for (let i = 0; i < length; i+=2) {
+            let lo = toHex(i2cReadByte(ICM20948_I2C_ADDR, fromReg + i))
+            let hi = toHex(i2cReadByte(ICM20948_I2C_ADDR, fromReg + i + 1))
+            serial.writeLine(fromName + "[" + i + "] = " + hi + lo.substr(2))
+        }
+    }
+
+    /** dump some 2-byte little-endian magnetometer words */
+    dumpMagReadings(fromName:string, fromReg:number, length:number){
+        for (let i = 0; i < length; i += 2) {
+            let lo = toHex(this.readMagByte(fromReg + i))
+            let hi = toHex(this.readMagByte(fromReg + i + 1))
+            serial.writeLine(fromName + "[" + i + "] = " + hi + lo.substr(2))
         }
     }
 }
