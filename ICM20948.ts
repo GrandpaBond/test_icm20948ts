@@ -159,8 +159,12 @@ class ICM20948 {
             pause(1000)
         }
 
-        // try using magnetometer directly
-        this.useMagDirect()
+       
+        this.useMagDirect() // try using magnetometer directly
+        //this.useMagSlave() // try using magnetometer indirectly
+
+        // reset magnetometer
+        this.magInitialise()
 
         // is AK09916 sub-chip listening?
         this.checkForAK09916()
@@ -171,14 +175,13 @@ class ICM20948 {
         }
 
         // Set up the gyro and accelerometer
-        this.useBank(2)
-        this.set_gyro_sample_rate(100)
-        this.set_gyro_low_pass(true, 5)
-        this.set_gyro_full_scale(250)
+        this.setGyroSampleRate(100)
+        this.setGyroSmoothing(true, 5)
+        this.setGyroSensitivity(250)
 
-        this.set_accelerometer_sample_rate(125)
-        this.set_accelerometer_low_pass(true, 5)
-        this.set_accelerometer_full_scale(16)
+        this.setAccelSampleRate(125)
+        this.setAccelSmoothing(true, 5)
+        this.setAccelSensitivity(16)
 
         this.useBank(0)
         basic.pause(10) //time.sleep(0.01)
@@ -252,67 +255,75 @@ class ICM20948 {
         return ((this.readMagByte(AK09916_ST1) & AK09916_ST1_DRDY) > 0)
     }
 
-    // Accelerometer and Gyro readings are parked in the output space
+    // latest Accelerometer and Gyro readings are parked in the output space
     senseIcm() {
 
         this.useBank(0)
         let data = i2cReadData(ICM20948_ACCEL_XOUT_H, 12)
 
-        //dissect 12 bytes into six 16-bit readings
-        let ax = data.getNumber(NumberFormat.UInt16LE, 0)
-        let ay = data.getNumber(NumberFormat.UInt16LE, 2)
-        let az = data.getNumber(NumberFormat.UInt16LE, 4)
-        let gx = data.getNumber(NumberFormat.UInt16LE, 6)
-        let gy = data.getNumber(NumberFormat.UInt16LE, 8)
-        let gz = data.getNumber(NumberFormat.UInt16LE, 10)
+        // dissect these 12 bytes into six big-endian 16-bit readings
+        let ax = data.getNumber(NumberFormat.UInt16BE, 0)
+        let ay = data.getNumber(NumberFormat.UInt16BE, 2)
+        let az = data.getNumber(NumberFormat.UInt16BE, 4)
+        let gx = data.getNumber(NumberFormat.UInt16BE, 6)
+        let gy = data.getNumber(NumberFormat.UInt16BE, 8)
+        let gz = data.getNumber(NumberFormat.UInt16BE, 10)
 
 
-        // Read accelerometer full scale range and
-        // use it to convert the reading to gs
+        // Read accelerometer full scale range setting
         this.useBank(2)
-        let scale = (i2cReadByte(this.icm, ICM20948_ACCEL_CONFIG) & 0x06) >> 1
+        let range = (i2cReadByte(this.icm, ICM20948_ACCEL_CONFIG) & 0x06) >> 1
 
-        // scale ranges from section 3.2 of the datasheet
-        let gs = [16384.0, 8192.0, 4096.0, 2048.0][scale]
+        // (scale ranges taken from section 3.2 of the datasheet)
+        // 0xFFFF =  [  2g,     4g,     8g      16g  ] 
+        
+        let scale = [16384.0, 8192.0, 4096.0, 2048.0][range]
+        ax /= scale
+        ay /= scale
+        az /= scale
 
-        ax /= gs
-        ay /= gs
-        az /= gs
-
-        // Read back the degrees per second rate and
+        // Read back the spin-rate range setting and
         // use it to compensate the reading to dps
-        scale = (i2cReadByte(this.icm, ICM20948_GYRO_CONFIG_1) & 0x06) >> 1
+        range = (i2cReadByte(this.icm, ICM20948_GYRO_CONFIG_1) & 0x06) >> 1
 
-        // scale ranges from section 3.1 of the datasheet
-        let dps = [131, 65.5, 32.8, 16.4][scale]
+        // (scale ranges taken from section 3.1 of the datasheet)
+        // 0xFFFF =     [250, 500, 1000, 2000] dps
+        scale = [131, 65.5, 32.8, 16.4][range]
 
-        gx /= dps
-        gy /= dps
-        gz /= dps
+        gx /= scale
+        gy /= scale
+        gz /= scale
 
         return [ax, ay, az, gx, gy, gz]
     }
 
-    set_accelerometer_sample_rate(rate = 125) {
+    setAccelSampleRate(rate = 125) {
         /* Set the accelerometer sample rate in Hz. */
-        this.useBank(2)
         // 125Hz - 1.125 kHz / (1 + rate)
         //rate = Number((1125.0 / rate) - 1)
         rate = (1125.0 / rate) - 1
         // TODO maybe use struct to pack and then this.write_bytes
+        this.useBank(2)
         i2cWriteByte(this.icm, ICM20948_ACCEL_SMPLRT_DIV_1, (rate >> 8) & 0xff)
         i2cWriteByte(this.icm, ICM20948_ACCEL_SMPLRT_DIV_2, rate & 0xff)
     }
 
-    set_accelerometer_full_scale(scale = 16) {
-        /* Set the accelerometer fulls cale range to +- the supplied value. */
+    setAccelSensitivity(scale = 16) {
+        /* Set the accelerometer full scale range to +- the supplied value. */
+        // only values allowed are 2g, 4g, 8g, or 16g so round down to the nearest
+        // giving range selector = [0,  1,  2,  3]
+        let fsBits = 
+            (scale < 4)? 0b00:                  // select 2g
+                ((scale < 8)? 0b01:             // select 4g
+                    ((scale < 16)? 0b10: 0b11)) // select 8g or 16g
+        // read config and clear the ACCEL_FS_SEL field
         this.useBank(2)
         let value = i2cReadByte(this.icm, ICM20948_ACCEL_CONFIG) & 0b11111001
-        ///////value |= { 2:0b00, 4:0b01, 8:0b10, 16:0b11 }[scale] << 1
+        value |= fsBits << 1
         i2cWriteByte(this.icm, ICM20948_ACCEL_CONFIG, value)
     }
 
-    set_accelerometer_low_pass(enabled = true, mode = 5) {
+    setAccelSmoothing(enabled = true, mode = 5) {
         /* Configure the accelerometer low pass filter. */
         this.useBank(2)
         let value = i2cReadByte(this.icm, ICM20948_ACCEL_CONFIG) & 0b10001110
@@ -323,7 +334,7 @@ class ICM20948 {
         }
     }
 
-    set_gyro_sample_rate(rate = 125) {
+    setGyroSampleRate(rate = 125) {
         /* Set the gyro sample rate in Hz. */
         this.useBank(2)
         // 125Hz sample rate - 1.125 kHz / (1 + rate)
@@ -331,15 +342,16 @@ class ICM20948 {
         i2cWriteByte(this.icm, ICM20948_GYRO_SMPLRT_DIV, rate)
     }
 
-    set_gyro_full_scale(scale = 250) {
+    setGyroSensitivity(scale = 250) {
         /* Set the gyro full scale range to +- supplied value. */
         this.useBank(2)
+        // read config and clear the GYRO_FS_SEL field
         let value = i2cReadByte(this.icm, ICM20948_GYRO_CONFIG_1) & 0b11111001
         /////value |= { 250:0b00, 500:0b01, 1000:0b10, 2000:0b11 }[scale] << 1
         i2cWriteByte(this.icm, ICM20948_GYRO_CONFIG_1, value)
     }
 
-    set_gyro_low_pass(enabled = true, mode = 5) {
+    setGyroSmoothing(enabled = true, mode = 5) {
         /* Configure the gyro low pass filter. */
         this.useBank(2)
         let value = i2cReadByte(this.icm, ICM20948_GYRO_CONFIG_1) & 0b10001110
@@ -350,7 +362,7 @@ class ICM20948 {
         i2cWriteByte(this.icm, ICM20948_GYRO_CONFIG_1, value)
     }
 
-    read_temperature() {
+    readTemperature() {
         /* Property to read the current IMU temperature */
         // PWR_MGMT_1 defaults to leave temperature enabled
         this.useBank(0)
@@ -360,9 +372,9 @@ class ICM20948 {
         let temperature_deg_c = ((temp_raw - ICM20948_ROOM_TEMP_OFFSET) / ICM20948_TEMPERATURE_SENSITIVITY) + ICM20948_TEMPERATURE_DEGREES_OFFSET
         return temperature_deg_c
     }
+
     /** Initialise various data transfer conditions  */
     initialise() {
-
         this.useBank(0)
         // Set Clock Auto to wake from possible Sleep mode
         i2cWriteByte(this.icm, ICM20948_PWR_MGMT_1, ICM20948_PWR_MGMT_1_CLOCK_AUTO)
