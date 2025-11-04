@@ -183,8 +183,7 @@ class ICM20948 {
         this.setAccelSmoothing(true, 5)
         this.setAccelSensitivity(16)
 
-        this.useBank(0)
-        basic.pause(10) //time.sleep(0.01)
+        basic.pause(1000) //time.sleep(0.01)
 
         // ? clear interrupts
         i2cWriteByte(this.icm, ICM20948_INT_PIN_CFG, 0x30)
@@ -517,106 +516,215 @@ class ICM20948 {
     }
 
 
-    dumpRegisters(bank:number) {
+    dumpRegisters(bank: number) {
         switch (bank) {
             case 0:
                 // Bank 0:
+                pause(100)
+                serial.writeLine("")
+                pause(100)
+                serial.writeLine("")
+                pause(100)
+                serial.writeLine("ICM Bank 0 Registers")
+                pause(100)
+                serial.writeLine("")
                 this.useBank(0)
+                pause(100)
                 serial.writeLine("WHO_AM_I = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_WHO_AM_I)))
+                pause(100)
                 serial.writeLine("USER_CTRL = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_USER_CTRL)))
+                pause(100)
                 serial.writeLine("PWR_MGMT_1 = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_PWR_MGMT_1)))
+                pause(100)
                 serial.writeLine("PWR_MGMT_2 = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_PWR_MGMT_2)))
+                pause(100)
                 serial.writeLine("INT_PIN_CFG = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_INT_PIN_CFG)))
+                pause(100)
                 serial.writeLine("ACCEL_SMPLRT_DIV_1 = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_ACCEL_SMPLRT_DIV_1)))
+                pause(100)
                 serial.writeLine("ACCEL_SMPLRT_DIV_2 = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_ACCEL_SMPLRT_DIV_2)))
+                pause(100)
                 serial.writeLine("ACCEL_INTEL_CTRL = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_ACCEL_INTEL_CTRL)))
+                pause(100)
                 serial.writeLine("ACCEL_WOM_THR = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_ACCEL_WOM_THR)))
+                pause(100)
                 serial.writeLine("ACCEL_CONFIG = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_ACCEL_CONFIG)))
-                serial.writeLine("ACCEL_XOUT_H = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_ACCEL_XOUT_H)))
-                serial.writeLine("GRYO_XOUT_H = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_GRYO_XOUT_H)))
+                // serial.writeLine("ACCEL_XOUT_H = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_ACCEL_XOUT_H)))
+                this.dumpIcmReadingsBE("ACCEL_XYZ", ICM20948_ACCEL_XOUT_H, 6)
+                pause(100)
+                // serial.writeLine("GRYO_XOUT_H = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_GRYO_XOUT_H)))
+                this.dumpIcmReadingsBE("GYRO_XYZ", ICM20948_GRYO_XOUT_H, 6)
+                pause(100)
                 serial.writeLine("TEMP_OUT_H = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_TEMP_OUT_H)))
+                pause(100)
                 serial.writeLine("TEMP_OUT_L = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_TEMP_OUT_L)))
-                serial.writeLine("EXT_SLV_SENS_DATA_00 = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_EXT_SLV_SENS_DATA_00)))
+                // serial.writeLine("EXT_SLV_SENS_DATA_XYZ " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_EXT_SLV_SENS_DATA_00)))
+                this.dumpIcmReadingsLE("SLAVE_MAG_XYZ", ICM20948_EXT_SLV_SENS_DATA_00, 6)
+                pause(100)
+
                 break
 
             // don't bother with bank 1 !
 
             case 2:
                 // Bank 2:
+                pause(100)
+                serial.writeLine("")
+                pause(100)
+                serial.writeLine("")
+                pause(100)
+                serial.writeLine("ICM Bank 2 Registers")
+                pause(100)
+                serial.writeLine("")
                 this.useBank(2)
+                pause(100)
                 serial.writeLine("GYRO_SMPLRT_DIV = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_GYRO_SMPLRT_DIV)))
+                pause(100)
                 serial.writeLine("GYRO_CONFIG_1 = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_GYRO_CONFIG_1)))
+                pause(100)
                 serial.writeLine("GYRO_CONFIG_1_GYRO_FS_SEL_MASK = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_GYRO_CONFIG_1_GYRO_FS_SEL_MASK)))
+                pause(100)
                 serial.writeLine("GYRO_CONFIG_1_GYRO_DLPCFCFG_MASK = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_GYRO_CONFIG_1_GYRO_DLPCFCFG_MASK)))
+                pause(100)
                 serial.writeLine("GYRO_CONFIG_2 = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_GYRO_CONFIG_2)))
+                pause(100)
                 serial.writeLine("ODR_ALIGN_EN = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_ODR_ALIGN_EN)))
+                pause(100)
                 serial.writeLine("ACCEL_SMPLRT_DIV_1 = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_ACCEL_SMPLRT_DIV_1)))
+                pause(100)
                 serial.writeLine("ACCEL_SMPLRT_DIV_2 = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_ACCEL_SMPLRT_DIV_2)))
+                pause(100)
                 serial.writeLine("ACCEL_INTEL_CTRL = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_ACCEL_INTEL_CTRL)))
+                pause(100)
                 serial.writeLine("ACCEL_WOM_THR = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_ACCEL_WOM_THR)))
+                pause(100)
                 serial.writeLine("ACCEL_CONFIG_1 = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_ACCEL_CONFIG_1)))
+                pause(100)
                 serial.writeLine("ACCEL_CONFIG_1_ACCEL_FS_SEL_MASK = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_ACCEL_CONFIG_1_ACCEL_FS_SEL_MASK)))
+                pause(100)
                 serial.writeLine("ACCEL_CONFIG_1_ACCEL_DLPFCFG_MASK = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_ACCEL_CONFIG_1_ACCEL_DLPFCFG_MASK)))
+                pause(100)
                 serial.writeLine("ACCEL_CONFIG_2 = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_ACCEL_CONFIG_2)))
+                pause(100)
                 serial.writeLine("PRS_ODR_CONFIG = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_PRS_ODR_CONFIG)))
+                pause(100)
                 serial.writeLine("PRGM_START_ADDRH = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_PRGM_START_ADDRH)))
+                pause(100)
                 serial.writeLine("PRGM_START_ADDRL = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_PRGM_START_ADDRL)))
+                pause(100)
                 serial.writeLine("FSYNC_CONFIG = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_FSYNC_CONFIG)))
+                pause(100)
                 serial.writeLine("TEMP_CONFIG = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_TEMP_CONFIG)))
+                pause(100)
                 serial.writeLine("MOD_CTRL_USR = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_MOD_CTRL_USR)))
+                pause(100)
                 serial.writeLine("MOD_CTRL_USR_REG_LP_DMP_EN = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_MOD_CTRL_USR_REG_LP_DMP_EN)))
+                pause(100)
                 break
 
             case 3:
                 // Bank 3:
+                pause(100)
+                serial.writeLine("")
+                pause(100)
+                serial.writeLine("")
+                pause(100)
+                serial.writeLine("ICM Bank 3 Registers")
+                pause(100)
+                serial.writeLine("")
                 this.useBank(3)
+                pause(100)
                 serial.writeLine("I2C_MST_ODR_CONFIG = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_I2C_MST_ODR_CONFIG)))
+                pause(100)
                 serial.writeLine("I2C_MST_CTRL = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_I2C_MST_CTRL)))
+                pause(100)
                 serial.writeLine("I2C_MST_DELAY_CTRL = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_I2C_MST_DELAY_CTRL)))
+                pause(100)
                 serial.writeLine("I2C_SLV0_ADDR = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_I2C_SLV0_ADDR)))
+                pause(100)
                 serial.writeLine("I2C_SLV0_REG = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_I2C_SLV0_REG)))
+                pause(100)
                 serial.writeLine("I2C_SLV0_CTRL = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_I2C_SLV0_CTRL)))
+                pause(100)
                 serial.writeLine("I2C_SLV0_DO = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_I2C_SLV0_DO)))
+                pause(100)
                 serial.writeLine("I2C_SLV1_ADDR = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_I2C_SLV1_ADDR)))
+                pause(100)
                 serial.writeLine("I2C_SLV1_REG = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_I2C_SLV1_REG)))
+                pause(100)
                 serial.writeLine("I2C_SLV1_CTRL = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_I2C_SLV1_CTRL)))
+                pause(100)
                 serial.writeLine("I2C_SLV1_DO = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_I2C_SLV1_DO)))
+                pause(100)
+                pause(100)
                 serial.writeLine("I2C_SLV2_ADDR = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_I2C_SLV2_ADDR)))
+                pause(100)
                 serial.writeLine("I2C_SLV2_REG = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_I2C_SLV2_REG)))
+                pause(100)
                 serial.writeLine("I2C_SLV2_CTRL = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_I2C_SLV2_CTRL)))
+                pause(100)
                 serial.writeLine("I2C_SLV2_DO = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_I2C_SLV2_DO)))
+                pause(100)
                 serial.writeLine("I2C_SLV3_ADDR = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_I2C_SLV3_ADDR)))
+                pause(100)
                 serial.writeLine("I2C_SLV3_REG = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_I2C_SLV3_REG)))
+                pause(100)
                 serial.writeLine("I2C_SLV3_CTRL = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_I2C_SLV3_CTRL)))
+                pause(100)
                 serial.writeLine("I2C_SLV3_DO = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_I2C_SLV3_DO)))
+                pause(100)
                 serial.writeLine("I2C_SLV4_ADDR = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_I2C_SLV4_ADDR)))
+                pause(100)
                 serial.writeLine("I2C_SLV4_REG = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_I2C_SLV4_REG)))
+                pause(100)
                 serial.writeLine("I2C_SLV4_CTRL = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_I2C_SLV4_CTRL)))
+                pause(100)
                 serial.writeLine("I2C_SLV4_DO = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_I2C_SLV4_DO)))
+                pause(100)
                 serial.writeLine("I2C_SLV4_DI = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_I2C_SLV4_DI)))
+                pause(100)
                 break
 
             case 4:
                 // Magnetometer 
+                pause(100)
+                serial.writeLine("Magnetometer Registers")
+                pause(100)
                 serial.writeLine("AK09916_WIA2 = " + toHex(this.readMagByte(AK09916_WIA2)))
+                pause(100)
                 serial.writeLine("AK09916_ST1 = " + toHex(this.readMagByte(AK09916_ST1)))
+                pause(100)
                 this.dumpMagReadings("AK09916_HXL...", AK09916_HXL, 6) // sensor data
+                pause(100)
                 serial.writeLine("AK09916_ST2 = " + toHex(this.readMagByte(AK09916_ST2)))
+                pause(100)
                 serial.writeLine("AK09916_CNTL2 = " + toHex(this.readMagByte(AK09916_CNTL2)))
+                pause(100)
                 serial.writeLine("AK09916_CNTL3 = " + toHex(this.readMagByte(AK09916_CNTL3)))
+                pause(100)
                 break
         }
     }
-    /** dump some 2-byte little-endian ICM words */
-    dumpReadings(fromName: string, fromReg: number, length: number) {
+    /** construct and dump some 2-byte big-endian ICM words */
+    dumpIcmReadingsBE(fromName: string, fromReg: number, length: number) {
         for (let i = 0; i < length; i+=2) {
+            let hi = toHex(i2cReadByte(ICM20948_I2C_ADDR, fromReg + i))
+            let lo = toHex(i2cReadByte(ICM20948_I2C_ADDR, fromReg + i + 1))
+            serial.writeLine(fromName + "[" + i + "] = " + hi + lo.substr(2))
+        }
+    }
+
+    /** construct and dump some 2-byte little-endian ICM words */
+    // (used for LE mag data read indirectly, in master-slave mode)
+    dumpIcmReadingsLE(fromName: string, fromReg: number, length: number) {
+        for (let i = 0; i < length; i += 2) {
             let lo = toHex(i2cReadByte(ICM20948_I2C_ADDR, fromReg + i))
             let hi = toHex(i2cReadByte(ICM20948_I2C_ADDR, fromReg + i + 1))
             serial.writeLine(fromName + "[" + i + "] = " + hi + lo.substr(2))
         }
     }
 
-    /** dump some 2-byte little-endian magnetometer words */
+    /** construct and dump some 2-byte little-endian magnetometer words */
     dumpMagReadings(fromName:string, fromReg:number, length:number){
         for (let i = 0; i < length; i += 2) {
             let lo = toHex(this.readMagByte(fromReg + i))

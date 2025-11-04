@@ -2,7 +2,6 @@
 serial.redirectToUSB()
 basic.showString("Hello!")
 serial.writeLine("STARTING UP...")
-serial.writeLine("toHex(42) = "+toHex(42))
 
 let sensor = new ICM20948(ICM20948_I2C_ADDR, AK09916_I2C_ADDR)
 basic.showString("init:"+sensor.status)
@@ -17,23 +16,24 @@ basic.showString("dumped")
 pause(1000)
 //datalogger.log(datalogger.createCV("sensor init:", sensor.status))
 
-let mag:number[], gyro:number[]
-input.onButtonPressed(Button.A, function() { 
-    mag = sensor.senseMag()
-    gyro = sensor.senseIcm()
-    //report(gyro,mag)
+let magData:number[], icmData:number[]
+input.onButtonPressed(Button.A, function() {
+    icmData = sensor.senseIcm() 
+    magData = sensor.senseMag()
+    report(icmData,magData)
 })
 
-/*function report(gyro:number[],mag: number[]){
-    datalogger.log(
-        datalogger.createCV("accX", gyro[0]),
-        datalogger.createCV("accY", 0),
-        datalogger.createCV("accZ", 0),
-        datalogger.createCV("gyrX", 0),
-        datalogger.createCV("gyrY", 0),
-        datalogger.createCV("gyrZ", 0),
-        datalogger.createCV("magX", 0),
-        datalogger.createCV("magY", 0),
-        datalogger.createCV("magZ", 0)
-    )
-}*/
+function report(icmData:number[],magData: number[]) {
+    let icmTags = ['AX', 'AY', 'AZ,', 'GX', 'GY', 'GZ']
+    let magTags = ['MX', 'MY', 'MZ']
+    serial.writeLine("")
+    serial.writeLine('Sensor Readings:')
+    for(let i=0; i<6;i++) {
+        serial.writeLine(icmTags[i]+" = "+ icmData[i])
+    }
+    for (let i = 0; i < 3; i++) {
+        serial.writeLine(magTags[i] + " = " + magData[i])
+    }
+    
+    serial.writeLine("")
+}
