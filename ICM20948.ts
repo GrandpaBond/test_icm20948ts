@@ -464,6 +464,7 @@ class ICM20948 {
         i2cWriteByte(this.icm, ICM20948_I2C_SLV0_ADDR, AK09916_I2C_ADDR) // point at AK09916
         i2cWriteByte(this.icm, ICM20948_I2C_SLV0_REG, reg)
         i2cWriteByte(this.icm, ICM20948_I2C_SLV0_DO, value)
+        i2cWriteByte(this.icm, ICM20948_I2C_SLV0_CTRL, 0)
         this.magSlaveGo()
 
     }
@@ -475,6 +476,7 @@ class ICM20948 {
         i2cWriteByte(this.icm, ICM20948_I2C_SLV0_ADDR, AK09916_I2C_ADDR | ICM20948_I2C_SLV_ADDR_RNW)
         i2cWriteByte(this.icm, ICM20948_I2C_SLV0_REG, reg)
         i2cWriteByte(this.icm, ICM20948_I2C_SLV0_DO, ICM20948_EXT_SLV_SENS_DATA_00)
+        i2cWriteByte(this.icm, ICM20948_I2C_SLV0_CTRL, ICM20948_I2C_SLV_CTRL_SLV_ENABLE | 1) // length field says 1 byte only
         this.magSlaveGo()
 
         return i2cReadByte(this.icm, ICM20948_EXT_SLV_SENS_DATA_00)
@@ -483,10 +485,10 @@ class ICM20948 {
     magReadData(reg:number, length = 1) {
         /** Read up to 24 bytes from the slave magnetometer. */
         this.useBank(3)
-        i2cWriteByte(this.icm, ICM20948_I2C_SLV0_CTRL, 0x80 | 0x08 | length)
         i2cWriteByte(this.icm, ICM20948_I2C_SLV0_ADDR, AK09916_I2C_ADDR | ICM20948_I2C_SLV_ADDR_RNW)
         i2cWriteByte(this.icm, ICM20948_I2C_SLV0_REG, reg)
-        i2cWriteByte(this.icm, ICM20948_I2C_SLV0_DO, ICM20948_EXT_SLV_SENS_DATA_00)
+        i2cWriteByte(this.icm, ICM20948_I2C_SLV0_DO, 0xff) // irrelevant
+        i2cWriteByte(this.icm, ICM20948_I2C_SLV0_CTRL, ICM20948_I2C_SLV_CTRL_SLV_ENABLE | length)
         this.magSlaveGo()
 
         return i2cReadData(ICM20948_EXT_SLV_SENS_DATA_00, length)
@@ -498,6 +500,7 @@ class ICM20948 {
         i2cRegisterFlags(this.icm, ICM20948_USER_CTRL, 0, ICM20948_USER_CTRL_I2C_MST_EN)
         // eventually, wait for slave to report data is ready?
         control.waitMicros(5000) // =5ms
+        // now unset Master Enable
         i2cRegisterFlags(this.icm, ICM20948_USER_CTRL, ICM20948_USER_CTRL_I2C_MST_EN, 0)
     }
 
