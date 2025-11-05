@@ -136,10 +136,11 @@ class ICM20948 {
     registerBank: number // currently-selected register bank
     status: number  // flags indicating current status of the chip
 
-    constructor(icmAddress: number, magAddress: number) {
+    /** create an ICM20948 instance */
+    constructor(icmAddress: number, magDirect:boolean) {
         this.registerBank = -1 // currently-selected register-bank
         this.icm = icmAddress // I2C master address of ICM20948 chip
-        this.mag = magAddress // I2C address of AK09916 sub-chip
+        this.mag = AK09916_I2C_ADDR // I2C address of AK09916 sub-chip
         this.status = 0 // (awaiting initialisation)
 
         // *** Before trying anything, reset the chip:
@@ -159,9 +160,11 @@ class ICM20948 {
             pause(1000)
         }
 
-       
-        this.useMagDirect() // try using magnetometer directly
-        //this.useMagSlave() // try using magnetometer indirectly
+        if (magDirect) {
+            this.useMagDirect() // address magnetometer directly on the I2C bus
+        } else {
+            this.useMagSlave() // address magnetometer indirectly via the ICM
+        }
 
         // reset magnetometer
         this.magInitialise()
@@ -398,6 +401,7 @@ class ICM20948 {
 
 
     //********************************** Low-level I/O ********************************* */
+    //      (uses I2C access primitives found in pins_extra.ts )
 
     /** Nominate a register bank */
     useBank(value: number) {
@@ -407,8 +411,8 @@ class ICM20948 {
         }
     }
 
+    /** set up I2C access to AK09916 magnetometer in Pass-Through mode */
     useMagDirect() {
-        /** set up I2C access to AK09916 magnetometer in Pass-Through mode */
         this.useBank(0)
         // in the USER_CTRL register, clear the I2C_MST_EN bit
         i2cRegisterFlags(this.icm, ICM20948_USER_CTRL, ICM20948_USER_CTRL_I2C_MST_EN, 0)
@@ -419,8 +423,8 @@ class ICM20948 {
     }
 
 
+    /** prepare for I2C access to AK09916 magnetometer in Master-Slave mode */
     useMagSlave() {
-        /** prepare for I2C access to AK09916 magnetometer in Master-Slave mode */
         this.useBank(0)
         // in the USER_CTRL register, set the I2C_MST_EN bit
         i2cRegisterFlags(this.icm, ICM20948_USER_CTRL, 0, ICM20948_USER_CTRL_I2C_MST_EN)
@@ -430,8 +434,8 @@ class ICM20948 {
         this.magInitialise()
     }
 
+    /** Reset the magnetometer */
     magInitialise() {
-        // Reset the magnetometer
         this.magWriteByte(AK09916_CNTL3, 0x01)
         while (this.magReadByte(AK09916_CNTL3) == 0x01) {
             control.waitMicros(100)
@@ -441,8 +445,11 @@ class ICM20948 {
 
     // Wrappers to access magnetometer in either mode
     writeMagByte(reg:number, value:number) {
-        return this.magIsDirect ? i2cWriteByte(this.mag, reg, value) 
-                                : this.magWriteByte(reg, value)
+        if(this.magIsDirect) {
+            i2cWriteByte(this.mag, reg, value) 
+        } else { 
+            this.magWriteByte(reg, value)
+        }
     }
 
     readMagByte(reg:number) {
@@ -455,47 +462,45 @@ class ICM20948 {
             : this.magReadData(reg, length)
     }
     
-    // Magnetometer I/O using Master-Slave mode
+    // ************** Magnetometer I/O when using Master-Slave mode ***************
 
+    /**  Write a byte indirectly into a magnetometer register */
     magWriteByte(reg:number, value:number) {
-        /**  Write a byte indirectly to a magnetometer register */
         // Set up a write access using Slave 0 register-set in bank 3
         this.useBank(3)
         i2cWriteByte(this.icm, ICM20948_I2C_SLV0_ADDR, AK09916_I2C_ADDR) // point at AK09916
         i2cWriteByte(this.icm, ICM20948_I2C_SLV0_REG, reg)
         i2cWriteByte(this.icm, ICM20948_I2C_SLV0_DO, value)
         i2cWriteByte(this.icm, ICM20948_I2C_SLV0_CTRL, 0)
-        this.magSlaveGo()
-
+        this.magSlaveGo() // initiate indirect transfer
     }
 
+    /** Read a byte from the slave magnetometer */
     magReadByte(reg:number) {
-        /** Read a byte from the slave magnetometer. */
         // Set up a read access using Slave 0 register-set in bank 3
         this.useBank(3)
         i2cWriteByte(this.icm, ICM20948_I2C_SLV0_ADDR, AK09916_I2C_ADDR | ICM20948_I2C_SLV_ADDR_RNW)
         i2cWriteByte(this.icm, ICM20948_I2C_SLV0_REG, reg)
         i2cWriteByte(this.icm, ICM20948_I2C_SLV0_DO, ICM20948_EXT_SLV_SENS_DATA_00)
         i2cWriteByte(this.icm, ICM20948_I2C_SLV0_CTRL, ICM20948_I2C_SLV_CTRL_SLV_ENABLE | 1) // length field says 1 byte only
-        this.magSlaveGo()
-
+        this.magSlaveGo() // initiate indirect transfer
         return i2cReadByte(this.icm, ICM20948_EXT_SLV_SENS_DATA_00)
     }
 
+    /** Read up to 24 bytes from the slave magnetometer. */
     magReadData(reg:number, length = 1) {
-        /** Read up to 24 bytes from the slave magnetometer. */
+        // Set up a read access using Slave 0 register-set in bank 3
         this.useBank(3)
         i2cWriteByte(this.icm, ICM20948_I2C_SLV0_ADDR, AK09916_I2C_ADDR | ICM20948_I2C_SLV_ADDR_RNW)
         i2cWriteByte(this.icm, ICM20948_I2C_SLV0_REG, reg)
         i2cWriteByte(this.icm, ICM20948_I2C_SLV0_DO, 0xff) // irrelevant
         i2cWriteByte(this.icm, ICM20948_I2C_SLV0_CTRL, ICM20948_I2C_SLV_CTRL_SLV_ENABLE | length)
-        this.magSlaveGo()
-
+        this.magSlaveGo() // initiate indirect transfer
         return i2cReadData(ICM20948_EXT_SLV_SENS_DATA_00, length)
     }
 
+    /** initiate Slave transfer by setting ICM20948_USER_CTRL_I2C_MST_EN for a while */
     magSlaveGo() {
-        /** initiate Slave transfer by setting ICM20948_USER_CTRL_I2C_MST_EN for a while */
         this.useBank(0)
         i2cRegisterFlags(this.icm, ICM20948_USER_CTRL, 0, ICM20948_USER_CTRL_I2C_MST_EN)
         // eventually, wait for slave to report data is ready?
