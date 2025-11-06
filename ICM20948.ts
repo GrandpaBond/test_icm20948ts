@@ -115,11 +115,11 @@ const   AK09916_ST2_HOFL = 0b00001000  // Magnetic sensor overflow bit
 const AK09916_CNTL2 = 0x31
 const   AK09916_CNTL2_MODE    = 0b00001111
 const   AK09916_CNTL2_MODE_OFF    = 0x00
-const   AK09916_CNTL2_MODE_SINGLE = 0x01
-const   AK09916_CNTL2_MODE_CONT1 = 0x02
-const   AK09916_CNTL2_MODE_CONT2 = 0x04
-const   AK09916_CNTL2_MODE_CONT3 = 0x06
-const   AK09916_CNTL2_MODE_CONT4 = 0x08
+const   AK09916_CNTL2_MODE_SINGLE = 0x01 // one-shot
+const   AK09916_CNTL2_MODE_CONT1_10HZ = 0x02 // 10 Hz
+const   AK09916_CNTL2_MODE_CONT2_20Hz = 0x04 // 20 Hz
+const   AK09916_CNTL2_MODE_CONT3_50Hz = 0x06 // 50 Hz
+const   AK09916_CNTL2_MODE_CONT4_100Hz = 0x08 // 100 Hz
 const   AK09916_CNTL2_MODE_TEST = 0b00010000
 const AK09916_CNTL3 = 0x32
 
@@ -159,6 +159,12 @@ class ICM20948 {
             basic.showIcon(IconNames.Heart)
             pause(1000)
         }
+        this.setAccelSampleRate()
+        this.setAccelSensitivity()
+        this.setAccelSmoothing()
+        this.setGyroSampleRate()
+        this.setGyroSensitivity()
+        this.setGyroSmoothing()
 
         if (magDirect) {
             this.useMagDirect() // address magnetometer directly on the I2C bus
@@ -440,6 +446,8 @@ class ICM20948 {
         while (this.magReadByte(AK09916_CNTL3) == 0x01) {
             control.waitMicros(100)
         }
+        // set operating mode to 50Hz continuous readings
+        this.magWriteByte(AK09916_CNTL2, AK09916_CNTL2_MODE_CONT3_50Hz)
     }
 
 

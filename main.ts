@@ -3,6 +3,7 @@ serial.redirectToUSB()
 basic.showString("Hello!")
 serial.writeLine("STARTING UP...")
 
+// connect to the ICM and separately to the MAG
 let sensor = new ICM20948(ICM20948_I2C_ADDR, true)
 basic.showString("init:"+sensor.status)
 
@@ -14,18 +15,25 @@ basic.showString("init:"+sensor.status)
 //basic.showString("dumped")
 pause(1000)
 //datalogger.log(datalogger.createCV("sensor init:", sensor.status))
-
+basic.clearScreen()
 let magData:number[], icmData:number[]
 
 input.onButtonPressed(Button.A, function() {
+    basic.showString('A')
     icmData = sensor.senseIcm() 
-    report("Accel", icmData)
+    report("Accel", icmData.slice(0,2))
+    pause(1000)
     report("Gyro", icmData.slice(3))
+    pause(1000)
+    basic.clearScreen()
 })
 
-input.onButtonPressed(Button.B, function() {
+input.onButtonPressed(Button.B, function () {
+    basic.showString('B')
     magData = sensor.senseMag()
     report("Mag", magData)
+    pause(1000)
+    basic.clearScreen()
 })
 
 function report(title:string, data: number[]) {
