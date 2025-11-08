@@ -19,7 +19,7 @@ function i2cReadByte(address: number, register: number) {
 function i2cReadData(address: number, register: number, length = 1):number[] {
     let buffer = pins.createBuffer(length)
     pins.i2cWriteNumber(address, register, NumberFormat.UInt8LE) // select register
-    buffer = pins.i2cReadBuffer(address, length, false) //read and Return
+    buffer = pins.i2cReadBuffer(address, length, true) //read and Return
     let vals = buffer.toArray(NumberFormat.UInt8LE)
     return vals
 }

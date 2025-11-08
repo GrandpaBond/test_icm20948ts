@@ -157,10 +157,19 @@ class ICM20948 {
         // *** Am I really there?
         this.checkForICM20948()
 
-        if ((this.status & STATUS_ICM_FOUND) > 0) {
-            basic.showIcon(IconNames.Heart)
-            pause(1000)
-        }
+
+        /* Set up the gyro and accelerometer
+        this.setGyroSampleRate(100)
+        this.setGyroSmoothing(true, 5)
+        this.setGyroSensitivity(250)
+
+        this.setAccelSampleRate(125)
+        this.setAccelSmoothing(true, 5)
+        this.setAccelSensitivity(16)
+
+        */
+
+        // initialise with defaults...
         this.setAccelSampleRate()
         this.setAccelSensitivity()
         this.setAccelSmoothing()
@@ -185,22 +194,9 @@ class ICM20948 {
             pause(1000)
         }
 
-        // Set up the gyro and accelerometer
-        this.setGyroSampleRate(100)
-        this.setGyroSmoothing(true, 5)
-        this.setGyroSensitivity(250)
-
-        this.setAccelSampleRate(125)
-        this.setAccelSmoothing(true, 5)
-        this.setAccelSensitivity(16)
-
-        basic.pause(1000) //time.sleep(0.01)
-
         // ? clear interrupts
-        i2cWriteByte(this.icm, ICM20948_INT_PIN_CFG, 0x30)
-        basic.pause(10) //time.sleep(0.01)
-
-
+        //i2cWriteByte(this.icm, ICM20948_INT_PIN_CFG, 0x30)
+        //basic.pause(10) //time.sleep(0.01)
     }
 
     /**  Check main ICM Chip ID */
@@ -234,7 +230,7 @@ class ICM20948 {
     /** read and return Accelerometer & Gyro */
     senseIcm() {
         let rdy = 0
-    // make sure a reading has been taken (RAW_DATA_0_RDY_INT bit set)
+    // make sure a reading has been taken (RAW_DATA_0_RDY_INT bit is set)
         while (rdy == 0) {
             rdy = i2cReadByte(this.icm, ICM20948_INT_STATUS_1) & 0x01
             Show.see("?")
@@ -242,24 +238,20 @@ class ICM20948 {
 
     // latest Accelerometer and Gyro readings are parked in the output space
         this.useBank(0)
+
+        this.dumpRegisters(0)
+
+
+
+
         let byteArray = i2cReadData(ICM20948_ACCEL_XOUT_H, 12)
+        // dissect these 12 bytes into six big-endian 16-bit readings
         let vals = [] 
         for (let i=0; i<12; i+=2) {
             let val =  (byteArray[i]<<8) | byteArray[i+1]
-            Show.see(i + ':' + val)
-            vals.push(val) // combine pairs as big-endian word
+            //Show.see(i + ':' + val)
+            vals.push(val)
         }
-
-        /* dissect these 12 bytes into six big-endian 16-bit readings
-
-        let ax = data.getNumber(NumberFormat.UInt16BE, 0)
-        let ay = data.getNumber(NumberFormat.UInt16BE, 2)
-        let az = data.getNumber(NumberFormat.UInt16BE, 4)
-        let gx = data.getNumber(NumberFormat.UInt16BE, 6)
-        let gy = data.getNumber(NumberFormat.UInt16BE, 8)
-        let gz = data.getNumber(NumberFormat.UInt16BE, 10)
-        */
-
 
         // Rescale the raw readings...
         // Read accelerometer full scale range setting
@@ -312,24 +304,23 @@ class ICM20948 {
             }
             control.waitMicros(10) //time.sleep(0.00001)
         }
-        data = this.readMagData(AK09916_HXL, 6)
-        // Read ST2 to confirm read finished,
+        let byteArray = this.readMagData(AK09916_HXL, 6)
+
+        // Read ST2 to inform chip that read finished,
         // (needed in continuous modes to unlock next sample)
         this.readMagByte(AK09916_ST2)
 
-        // extract three 16-bit readings
-        let x = data.getNumber(NumberFormat.UInt16LE, 0)
-        let y = data.getNumber(NumberFormat.UInt16LE, 2)
-        let z = data.getNumber(NumberFormat.UInt16LE, 4)
+        // dissect these 6 bytes into 3 big-endian 16-bit readings
+        let vals = []
+        for (let i = 0; i < 6; i += 2) {
+            let val = (byteArray[i] << 8) | byteArray[i + 1]
+            // Scale raw values by 0.15, giving magnetic flux density "uT"
+            // (see) section 3.3 of the datasheet)
+            //Show.see(i + ':' + val * 0.15)
+            vals.push(val)
+        }
 
-        // Scale for magnetic flux density "uT"
-        // from section 3.3 of the datasheet
-        // This value is constant
-        x *= 0.15
-        y *= 0.15
-        z *= 0.15
-
-        return [x, y, z]
+        return vals
     }
 
     magIsReady() {

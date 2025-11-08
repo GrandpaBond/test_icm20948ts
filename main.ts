@@ -1,11 +1,13 @@
 //datalogger.mirrorToSerial(true)
 serial.redirectToUSB()
-Show.use(ShowMode.BASIC)
+Show.use(ShowMode.SERIAL)
+
 basic.showString("Hello!")
-serial.writeLine("STARTING UP...")
+Show.see("STARTING UP...")
 
 // connect to the ICM and separately to the MAG
 let sensor = new ICM20948(ICM20948_I2C_ADDR, true)
+
 basic.showString("init:"+sensor.status)
 //sensor.dumpRegisters(0)
 //sensor.dumpRegisters(1)
@@ -16,7 +18,7 @@ basic.showString("init:"+sensor.status)
 pause(1000)
 
 
-basic.showString("temp:" + Math.floor(sensor.readTemperature()/10)*10)
+Show.see("temp:" + Math.floor(sensor.readTemperature()/10)*10)
 
 enum Tests {
     ACCEL,
@@ -31,7 +33,7 @@ let tests = ['A', 'G', 'M']
 input.onButtonPressed(Button.A, function () {
     pause(500)
     test = (test+1) % 3
-    Show.see(tests[test])
+    basic.showString(tests[test])
 })
 
 let magData:number[]
@@ -50,22 +52,24 @@ input.onButtonPressed(Button.B, function () {
             break
     }
 
+    basic.showIcon(IconNames.Yes)
+
     // now display it
     switch (test) {
         case Tests.ACCEL:
-            report("Accel", icmData.slice(0,3))
+            report3("Accel", icmData.slice(0,3))
             break
         case Tests.GYRO:
-            report("Gyro", icmData.slice(3))
+            report3("Gyro", icmData.slice(3))
             break
         case Tests.MAG:
-            report("Mag", magData)
+            report3("Mag", magData)
             break
     }
 })
    
-
-function report(title:string, data: number[]) {
+/** display X,Y,Z data values  */
+function report3(title:string, data: number[]) {
     let tags = ['X', 'Y', 'Z']
     pause(1000)
     Show.see(title)
