@@ -4,13 +4,15 @@
     "dependencies": {
         "core": "*",
         "radio": "*",
-        "microphone": "*"
+        "microphone": "*",
+        "datalogger": "*"
     },
     "files": [
         "main.ts",
         "README.md",
         "pins_extra.ts",
-        "ICM20948.ts"
+        "ICM20948.ts",
+        "show.ts"
     ],
     "testFiles": [
         "test.ts"

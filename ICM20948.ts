@@ -206,7 +206,8 @@ class ICM20948 {
         this.useBank(0)
         if (i2cReadByte(this.icm, ICM20948_WHO_AM_I) == ICM20948_CHIP_ID) {
             this.status |= STATUS_ICM_FOUND
-        }
+            Show.see("ICM ok")
+        } else Show.see("no ICM")
     }
 
     /**  Check magnetometer sub-chip ID */
@@ -214,31 +215,88 @@ class ICM20948 {
         let id = -1
         if (this.magIsDirect) {
             id = i2cReadByte(this.mag, AK09916_WIA2)
-            serial.writeLine("AK09916_WIA2 says "+toHex(id))
         } else {
             // we need a slave read for this register
             id = this.magReadByte(AK09916_WIA2)
         }
         if (id == AK09916_CHIP_ID) {
             this.status |= STATUS_MAG_FOUND
-        }
+            Show.see("MAG ok")
+        } else Show.see("no MAG")
     }
 
     getStatus() {
         return this.status
     }
 
+    /** read and return Accelerometer & Gyro */
+    senseIcm() {
+    // make sure a reading has been taken
+
+    // latest Accelerometer and Gyro readings are parked in the output space
+        this.useBank(0)
+        let data = i2cReadData(ICM20948_ACCEL_XOUT_H, 12)
+
+        // dissect these 12 bytes into six big-endian 16-bit readings
+        let ax = data.getNumber(NumberFormat.UInt16BE, 0)
+        let ay = data.getNumber(NumberFormat.UInt16BE, 2)
+        let az = data.getNumber(NumberFormat.UInt16BE, 4)
+        let gx = data.getNumber(NumberFormat.UInt16BE, 6)
+        let gy = data.getNumber(NumberFormat.UInt16BE, 8)
+        let gz = data.getNumber(NumberFormat.UInt16BE, 10)
+
+        // Rescale the raw readings...
+        // Read accelerometer full scale range setting
+        this.useBank(2)
+        let range = (i2cReadByte(this.icm, ICM20948_ACCEL_CONFIG) & 0x06) >> 1
+
+        // (scale ranges taken from section 3.2 of the datasheet)
+        // 0xFFFF =  [  2g,     4g,     8g      16g  ] 
+
+        let scale = [16384.0, 8192.0, 4096.0, 2048.0][range]
+        ax /= scale
+        ay /= scale
+        az /= scale
+
+        // Read back the spin-rate range setting and
+        // use it to compensate the reading to dps
+        range = (i2cReadByte(this.icm, ICM20948_GYRO_CONFIG_1) & 0x06) >> 1
+
+        // (scale ranges taken from section 3.1 of the datasheet)
+        // 0xFFFF =     [250, 500, 1000, 2000] dps
+        scale = [131, 65.5, 32.8, 16.4][range]
+
+        gx /= scale
+        gy /= scale
+        gz /= scale
+
+        return [ax, ay, az, gx, gy, gz]
+    }
+
     senseMag(timeout = 1.0) {
+        /* 
+
+        self.mag_write(AK09916_CNTL2, 0x01)  # Trigger single measurement
+        t_start = time.time()
+        while not self.magnetometer_ready():
+            if time.time() - t_start > timeout:
+                raise RuntimeError("Timeout waiting for Magnetometer Ready")
+            time.sleep(0.00001)
+
+        data = self.mag_read_bytes(AK09916_HXL, 6)
+
+        */
         this.magWriteByte(AK09916_CNTL2, 0x01)  // Trigger a single measurement
         let t_start = control.millis()
         let data: Buffer
         while (!this.magIsReady()) {
             if (control.millis() - t_start > timeout) {
-                /////throw RuntimeError('Timeout waiting for Magnetometer Ready')
-                control.waitMicros(10) //time.sleep(0.00001)
+                serial.writeLine('Timeout waiting for Magnetometer Ready')
+                break
             }
-            data = this.readMagData(AK09916_HXL, 6)
+            control.waitMicros(10) //time.sleep(0.00001)
         }
+        data = this.readMagData(AK09916_HXL, 6)
         // Read ST2 to confirm read finished,
         // (needed in continuous modes to unlock next sample)
         this.readMagByte(AK09916_ST2)
@@ -261,48 +319,6 @@ class ICM20948 {
     magIsReady() {
         /* Check the magnetometer status ready bit. */
         return ((this.readMagByte(AK09916_ST1) & AK09916_ST1_DRDY) > 0)
-    }
-
-    // latest Accelerometer and Gyro readings are parked in the output space
-    senseIcm() {
-
-        this.useBank(0)
-        let data = i2cReadData(ICM20948_ACCEL_XOUT_H, 12)
-
-        // dissect these 12 bytes into six big-endian 16-bit readings
-        let ax = data.getNumber(NumberFormat.UInt16BE, 0)
-        let ay = data.getNumber(NumberFormat.UInt16BE, 2)
-        let az = data.getNumber(NumberFormat.UInt16BE, 4)
-        let gx = data.getNumber(NumberFormat.UInt16BE, 6)
-        let gy = data.getNumber(NumberFormat.UInt16BE, 8)
-        let gz = data.getNumber(NumberFormat.UInt16BE, 10)
-
-
-        // Read accelerometer full scale range setting
-        this.useBank(2)
-        let range = (i2cReadByte(this.icm, ICM20948_ACCEL_CONFIG) & 0x06) >> 1
-
-        // (scale ranges taken from section 3.2 of the datasheet)
-        // 0xFFFF =  [  2g,     4g,     8g      16g  ] 
-        
-        let scale = [16384.0, 8192.0, 4096.0, 2048.0][range]
-        ax /= scale
-        ay /= scale
-        az /= scale
-
-        // Read back the spin-rate range setting and
-        // use it to compensate the reading to dps
-        range = (i2cReadByte(this.icm, ICM20948_GYRO_CONFIG_1) & 0x06) >> 1
-
-        // (scale ranges taken from section 3.1 of the datasheet)
-        // 0xFFFF =     [250, 500, 1000, 2000] dps
-        scale = [131, 65.5, 32.8, 16.4][range]
-
-        gx /= scale
-        gy /= scale
-        gz /= scale
-
-        return [ax, ay, az, gx, gy, gz]
     }
 
     setAccelSampleRate(rate = 125) {
@@ -383,6 +399,33 @@ class ICM20948 {
 
     /** Initialise various data transfer conditions  */
     initialise() {
+
+        /*
+
+        self.write(ICM20948_PWR_MGMT_1, 0x80)
+        time.sleep(0.01)
+        self.write(ICM20948_PWR_MGMT_1, 0x01)
+        self.write(ICM20948_PWR_MGMT_2, 0x00)
+
+        self.bank(2)
+
+        self.set_gyro_sample_rate(100)
+        self.set_gyro_low_pass(enabled=True, mode=5)
+        self.set_gyro_full_scale(250)
+
+        self.set_accelerometer_sample_rate(125)
+        self.set_accelerometer_low_pass(enabled=True, mode=5)
+        self.set_accelerometer_full_scale(16)
+
+        self.bank(0)
+        self.write(ICM20948_INT_PIN_CFG, 0x30)
+
+        self.bank(3)
+        self.write(ICM20948_I2C_MST_CTRL, 0x4D)
+        self.write(ICM20948_I2C_MST_DELAY_CTRL, 0x01)
+        */
+
+
         this.useBank(0)
         // Set Clock Auto to wake from possible Sleep mode
         i2cWriteByte(this.icm, ICM20948_PWR_MGMT_1, ICM20948_PWR_MGMT_1_CLOCK_AUTO)
@@ -442,12 +485,21 @@ class ICM20948 {
 
     /** Reset the magnetometer */
     magInitialise() {
+
+/*
+        # Reset the magnetometer
+        self.mag_write(AK09916_CNTL3, 0x01)
+        while self.mag_read(AK09916_CNTL3) == 0x01:
+            time.sleep(0.0001)
+*/
+
         this.magWriteByte(AK09916_CNTL3, 0x01)
         while (this.magReadByte(AK09916_CNTL3) == 0x01) {
             control.waitMicros(100)
         }
         // set operating mode to 50Hz continuous readings
         this.magWriteByte(AK09916_CNTL2, AK09916_CNTL2_MODE_CONT3_50Hz)
+        
     }
 
 
@@ -506,6 +558,25 @@ class ICM20948 {
         this.magSlaveGo() // initiate indirect transfer
         return i2cReadData(ICM20948_EXT_SLV_SENS_DATA_00, length)
     }
+
+    /*set up slave0 for reading into the bank 0 data registers
+    def _setup_mag_readout(self) -> None:
+    self._bank = 3
+    self._slave0_addr = 0x8C  OK
+    sleep(0.005)
+    self._slave0_reg = 0x11 == 17 == AK09916_HXL
+    sleep(0.005)
+    self._slave0_ctrl = 0x89  # enable == 0b 10001001 = SLV_ENABLE + length:9
+    sleep(0.005)*/
+
+    /* 
+
+        user = self.read(ICM20948_USER_CTRL)
+        self.write(ICM20948_USER_CTRL, user | 0x20)
+        time.sleep(0.005)
+        self.write(ICM20948_USER_CTRL, user)
+    
+    */
 
     /** initiate Slave transfer by setting ICM20948_USER_CTRL_I2C_MST_EN for a while */
     magSlaveGo() {
