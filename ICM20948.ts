@@ -29,6 +29,8 @@ const   ICM20948_INT_PIN_CFG_BYPASS_EN = 0b00000010
 //const ICM20948_ACCEL_INTEL_CTRL = 0x12
 //const ICM20948_ACCEL_WOM_THR = 0x13
 const ICM20948_ACCEL_CONFIG = 0x14
+const ICM20948_INT_STATUS_1  = 0x1A // bottom bit holds RAW_DATA_0_RDY_INT
+//  (Sensor Register Raw Data, from all sensors, is updated and ready to be read)
 const ICM20948_ACCEL_XOUT_H = 0x2D
 const ICM20948_GRYO_XOUT_H = 0x33
 
@@ -231,19 +233,33 @@ class ICM20948 {
 
     /** read and return Accelerometer & Gyro */
     senseIcm() {
-    // make sure a reading has been taken
+        let rdy = 0
+    // make sure a reading has been taken (RAW_DATA_0_RDY_INT bit set)
+        while (rdy == 0) {
+            rdy = i2cReadByte(this.icm, ICM20948_INT_STATUS_1) & 0x01
+            Show.see("?")
+        }
 
     // latest Accelerometer and Gyro readings are parked in the output space
         this.useBank(0)
-        let data = i2cReadData(ICM20948_ACCEL_XOUT_H, 12)
+        let byteArray = i2cReadData(ICM20948_ACCEL_XOUT_H, 12)
+        let vals = [] 
+        for (let i=0; i<12; i+=2) {
+            let val =  (byteArray[i]<<8) | byteArray[i+1]
+            Show.see(i + ':' + val)
+            vals.push(val) // combine pairs as big-endian word
+        }
 
-        // dissect these 12 bytes into six big-endian 16-bit readings
+        /* dissect these 12 bytes into six big-endian 16-bit readings
+
         let ax = data.getNumber(NumberFormat.UInt16BE, 0)
         let ay = data.getNumber(NumberFormat.UInt16BE, 2)
         let az = data.getNumber(NumberFormat.UInt16BE, 4)
         let gx = data.getNumber(NumberFormat.UInt16BE, 6)
         let gy = data.getNumber(NumberFormat.UInt16BE, 8)
         let gz = data.getNumber(NumberFormat.UInt16BE, 10)
+        */
+
 
         // Rescale the raw readings...
         // Read accelerometer full scale range setting
@@ -254,9 +270,9 @@ class ICM20948 {
         // 0xFFFF =  [  2g,     4g,     8g      16g  ] 
 
         let scale = [16384.0, 8192.0, 4096.0, 2048.0][range]
-        ax /= scale
-        ay /= scale
-        az /= scale
+        vals[0] /= scale
+        vals[1] /= scale
+        vals[2] /= scale
 
         // Read back the spin-rate range setting and
         // use it to compensate the reading to dps
@@ -266,11 +282,11 @@ class ICM20948 {
         // 0xFFFF =     [250, 500, 1000, 2000] dps
         scale = [131, 65.5, 32.8, 16.4][range]
 
-        gx /= scale
-        gy /= scale
-        gz /= scale
+        vals[3] /= scale
+        vals[4] /= scale
+        vals[5] /= scale
 
-        return [ax, ay, az, gx, gy, gz]
+        return vals
     }
 
     senseMag(timeout = 1.0) {
@@ -288,7 +304,7 @@ class ICM20948 {
         */
         this.magWriteByte(AK09916_CNTL2, 0x01)  // Trigger a single measurement
         let t_start = control.millis()
-        let data: Buffer
+        let data:Buffer
         while (!this.magIsReady()) {
             if (control.millis() - t_start > timeout) {
                 serial.writeLine('Timeout waiting for Magnetometer Ready')

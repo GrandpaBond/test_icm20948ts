@@ -15,12 +15,13 @@ function i2cReadByte(address: number, register: number) {
     return pins.i2cReadNumber(address, NumberFormat.UInt8LE, false) // read and return
 }
 
-/** Read multiple byte(s) from this I2C address, starting from given register. */
-function i2cReadData(address: number, register: number, length = 1) {
+/** Read an array of byte(s) from this I2C address, starting from given register. */
+function i2cReadData(address: number, register: number, length = 1):number[] {
     let buffer = pins.createBuffer(length)
     pins.i2cWriteNumber(address, register, NumberFormat.UInt8LE) // select register
-    buffer = pins.i2cReadBuffer(address, length, false) //read and return
-    return buffer
+    buffer = pins.i2cReadBuffer(address, length, false) //read and Return
+    let vals = buffer.toArray(NumberFormat.UInt8LE)
+    return vals
 }
 
 /** Modify flags in a register on this I2C address */

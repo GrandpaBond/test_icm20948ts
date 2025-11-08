@@ -16,7 +16,7 @@ basic.showString("init:"+sensor.status)
 pause(1000)
 
 
-basic.showString("temp:" + sensor.readTemperature())
+basic.showString("temp:" + Math.floor(sensor.readTemperature()/10)*10)
 
 enum Tests {
     ACCEL,
