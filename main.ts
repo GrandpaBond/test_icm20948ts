@@ -1,9 +1,9 @@
 //datalogger.mirrorToSerial(true)
 serial.redirectToUSB()
-Show.use(ShowMode.SERIAL)
+let mode = ShowMode.SERIAL
 
 basic.showString("Hello!")
-Show.see("STARTING UP...")
+Show.see(mode,"STARTING UP...")
 
 // connect to the ICM and separately to the MAG
 let sensor = new ICM20948(ICM20948_I2C_ADDR, true)
@@ -17,8 +17,9 @@ basic.showString("init:"+sensor.status)
 //basic.showString("dumped")
 pause(1000)
 
+let t = Math.floor(sensor.readTemperature()/10)*10
 
-Show.see("temp:" + Math.floor(sensor.readTemperature()/10)*10)
+Show.see(mode,"temp:" + t)
 
 enum Tests {
     ACCEL,
@@ -72,9 +73,9 @@ input.onButtonPressed(Button.B, function () {
 function report3(title:string, data: number[]) {
     let tags = ['X', 'Y', 'Z']
     pause(1000)
-    Show.see(title)
+    Show.see(mode,title)
     for(let i=0; i<3; i++) {
-        Show.see(title[0] + tags[i] + "=" + data[i])
+        Show.see(mode,title[0] + tags[i] + "=" + data[i])
     }
     pause(1000)
 }

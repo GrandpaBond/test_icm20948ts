@@ -204,8 +204,8 @@ class ICM20948 {
         this.useBank(0)
         if (i2cReadByte(this.icm, ICM20948_WHO_AM_I) == ICM20948_CHIP_ID) {
             this.status |= STATUS_ICM_FOUND
-            Show.see("ICM ok")
-        } else Show.see("no ICM")
+            Show.see(mode,"ICM ok")
+        } else Show.see(mode,"no ICM")
     }
 
     /**  Check magnetometer sub-chip ID */
@@ -219,8 +219,8 @@ class ICM20948 {
         }
         if (id == AK09916_CHIP_ID) {
             this.status |= STATUS_MAG_FOUND
-            Show.see("MAG ok")
-        } else Show.see("no MAG")
+            Show.see(mode,"MAG ok")
+        } else Show.see(mode,"no MAG")
     }
 
     getStatus() {
@@ -233,7 +233,7 @@ class ICM20948 {
     // make sure a reading has been taken (RAW_DATA_0_RDY_INT bit is set)
         while (rdy == 0) {
             rdy = i2cReadByte(this.icm, ICM20948_INT_STATUS_1) & 0x01
-            Show.see("?")
+            Show.see(mode,"?")
         }
 
     // latest Accelerometer and Gyro readings are parked in the output space
@@ -241,10 +241,9 @@ class ICM20948 {
 
         this.dumpRegisters(0)
 
-
-
-
         let byteArray = i2cReadData(ICM20948_ACCEL_XOUT_H, 12)
+
+        
         // dissect these 12 bytes into six big-endian 16-bit readings
         let vals = [] 
         for (let i=0; i<12; i+=2) {

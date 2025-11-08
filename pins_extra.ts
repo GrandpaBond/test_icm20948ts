@@ -20,6 +20,12 @@ function i2cReadData(address: number, register: number, length = 1):number[] {
     let buffer = pins.createBuffer(length)
     pins.i2cWriteNumber(address, register, NumberFormat.UInt8LE) // select register
     buffer = pins.i2cReadBuffer(address, length, true) //read and Return
+    Show.see(mode, "[" )
+    for (let n=0; n<6; n+=2){
+        let v = buffer.getNumber(NumberFormat.Int16BE, n)
+        Show.see(mode, v + ",")
+    }
+    Show.see(mode, "]")
     let vals = buffer.toArray(NumberFormat.UInt8LE)
     return vals
 }

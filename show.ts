@@ -5,15 +5,10 @@ enum ShowMode {
     SERIAL = 3
 }
 namespace Show{
-    /** Set output mode */
-    let showOutput = ShowMode.BASIC
-    export function use(mode:ShowMode) {
-        let showOutput = mode
-    }
 
     /** Display message in current output mode */
-    export function see(message:string) {
-        switch(showOutput){
+    export function see(mode:ShowMode, message:string) {
+        switch(mode){
             case ShowMode.NONE:
                 break
             case ShowMode.BASIC:
