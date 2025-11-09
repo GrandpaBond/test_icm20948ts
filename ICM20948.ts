@@ -145,11 +145,6 @@ class ICM20948 {
         this.mag = AK09916_I2C_ADDR // I2C address of AK09916 sub-chip
         this.status = 0 // (awaiting initialisation)
 
-        // *** Before trying anything, reset the chip:
-        this.useBank(0)
-        // set the ICM_PWR_MGMT_1_RESET bit in ICM_PWR_MGMT_1 register
-        i2cRegisterFlags(this.icm, ICM20948_PWR_MGMT_1, 0, ICM20948_PWR_MGMT_1_RESET)
-        pause(100)
 
         // now wake it up and prepare for use
         this.initialise()
@@ -189,14 +184,9 @@ class ICM20948 {
         // is AK09916 sub-chip listening?
         this.checkForAK09916()
 
-        if ((this.status & STATUS_MAG_FOUND) > 0) {
-            basic.showIcon(IconNames.Happy)
-            pause(1000)
-        }
-
-        // ? clear interrupts
-        //i2cWriteByte(this.icm, ICM20948_INT_PIN_CFG, 0x30)
-        //basic.pause(10) //time.sleep(0.01)
+        // ? clear interrupts ??? why 
+        i2cWriteByte(this.icm, ICM20948_INT_PIN_CFG, 0x30)
+        basic.pause(10) //time.sleep(0.01)
     }
 
     /**  Check main ICM Chip ID */
@@ -396,11 +386,11 @@ class ICM20948 {
         /* Property to read the current IMU temperature */
         // PWR_MGMT_1 defaults to leave temperature enabled
         this.useBank(0)
-        let temp_raw_bytes = i2cReadData(ICM20948_TEMP_OUT_H, 2)
-        //let temp_raw = struct.unpack('>h', bytearray(temp_raw_bytes))[0]
-        let temp_raw = (temp_raw_bytes[0] << 8) + temp_raw_bytes[1]
-        let temperature_deg_c = ((temp_raw - ICM20948_ROOM_TEMP_OFFSET) / ICM20948_TEMPERATURE_SENSITIVITY) + ICM20948_TEMPERATURE_DEGREES_OFFSET
-        return temperature_deg_c
+        this.dumpIcmWordsBE("tempRaw = ", ICM20948_TEMP_OUT_H, 2)
+        let tempBytes = i2cReadData(ICM20948_TEMP_OUT_H, 2)
+        let tempRaw = (tempBytes[0] << 8) + tempBytes[1]
+        let degC = ((tempRaw - ICM20948_ROOM_TEMP_OFFSET) / ICM20948_TEMPERATURE_SENSITIVITY) + ICM20948_TEMPERATURE_DEGREES_OFFSET
+        return degC
     }
 
     /** Initialise various data transfer conditions  */
@@ -424,7 +414,7 @@ class ICM20948 {
         self.set_accelerometer_full_scale(16)
 
         self.bank(0)
-        self.write(ICM20948_INT_PIN_CFG, 0x30)
+        self.write(ICM20948_INT_PIN_CFG, 0x30)  ???
 
         self.bank(3)
         self.write(ICM20948_I2C_MST_CTRL, 0x4D)
@@ -433,6 +423,11 @@ class ICM20948 {
 
 
         this.useBank(0)
+        // Before trying anything, reset the chip:
+        this.useBank(0)
+        // set the ICM_PWR_MGMT_1_RESET bit in ICM_PWR_MGMT_1 register
+        i2cRegisterFlags(this.icm, ICM20948_PWR_MGMT_1, 0, ICM20948_PWR_MGMT_1_RESET)
+        pause(100)
         // Set Clock Auto to wake from possible Sleep mode
         i2cWriteByte(this.icm, ICM20948_PWR_MGMT_1, ICM20948_PWR_MGMT_1_CLOCK_AUTO)
 
@@ -503,8 +498,8 @@ class ICM20948 {
         while (this.magReadByte(AK09916_CNTL3) == 0x01) {
             control.waitMicros(100)
         }
-        // set operating mode to 50Hz continuous readings
-        this.magWriteByte(AK09916_CNTL2, AK09916_CNTL2_MODE_CONT3_50Hz)
+        // set operating mode to one-shot single readings
+        this.magWriteByte(AK09916_CNTL2, AK09916_CNTL2_MODE_SINGLE)
         
     }
 
@@ -518,14 +513,14 @@ class ICM20948 {
         }
     }
 
-    readMagByte(reg:number) {
+    readMagByte(reg:number):number {
         return this.magIsDirect ? i2cReadByte(this.mag, reg) 
                                 : this.magReadByte(reg)
     }
 
-    readMagData(reg:number, length = 1) {
+    readMagData(reg:number, length = 1):number[] {
         return this.magIsDirect ? i2cReadData(this.mag, reg, length)
-            : this.magReadData(reg, length)
+                                : this.magReadData(reg, length)
     }
     
     // ************** Magnetometer I/O when using Master-Slave mode ***************
@@ -542,7 +537,7 @@ class ICM20948 {
     }
 
     /** Read a byte from the slave magnetometer */
-    magReadByte(reg:number) {
+    magReadByte(reg:number):number {
         // Set up a read access using Slave 0 register-set in bank 3
         this.useBank(3)
         i2cWriteByte(this.icm, ICM20948_I2C_SLV0_ADDR, AK09916_I2C_ADDR | ICM20948_I2C_SLV_ADDR_RNW)
@@ -554,7 +549,16 @@ class ICM20948 {
     }
 
     /** Read up to 24 bytes from the slave magnetometer. */
-    magReadData(reg:number, length = 1) {
+    magReadData(reg:number, length = 1):number[] {
+        /*set up slave0 for reading into the bank 0 data registers
+        def _setup_mag_readout(self) -> None:
+        self._bank = 3
+        self._slave0_addr = 0x8C  OK
+        sleep(0.005)
+        self._slave0_reg = 0x11 == 17 == AK09916_HXL
+        sleep(0.005)
+        self._slave0_ctrl = 0x89  # enable == 0b 10001001 = SLV_ENABLE | length:9
+        sleep(0.005)*/
         // Set up a read access using Slave 0 register-set in bank 3
         this.useBank(3)
         i2cWriteByte(this.icm, ICM20948_I2C_SLV0_ADDR, AK09916_I2C_ADDR | ICM20948_I2C_SLV_ADDR_RNW)
@@ -565,15 +569,6 @@ class ICM20948 {
         return i2cReadData(ICM20948_EXT_SLV_SENS_DATA_00, length)
     }
 
-    /*set up slave0 for reading into the bank 0 data registers
-    def _setup_mag_readout(self) -> None:
-    self._bank = 3
-    self._slave0_addr = 0x8C  OK
-    sleep(0.005)
-    self._slave0_reg = 0x11 == 17 == AK09916_HXL
-    sleep(0.005)
-    self._slave0_ctrl = 0x89  # enable == 0b 10001001 = SLV_ENABLE + length:9
-    sleep(0.005)*/
 
     /* 
 
@@ -643,16 +638,16 @@ class ICM20948 {
                 pause(100)
                 serial.writeLine("ACCEL_CONFIG = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_ACCEL_CONFIG)))
                 // serial.writeLine("ACCEL_XOUT_H = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_ACCEL_XOUT_H)))
-                this.dumpIcmReadingsBE("ACCEL_XYZ", ICM20948_ACCEL_XOUT_H, 6)
+                this.dumpIcmWordsBE("ACCEL_XYZ", ICM20948_ACCEL_XOUT_H, 6)
                 pause(100)
                 // serial.writeLine("GRYO_XOUT_H = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_GRYO_XOUT_H)))
-                this.dumpIcmReadingsBE("GYRO_XYZ", ICM20948_GRYO_XOUT_H, 6)
+                this.dumpIcmWordsBE("GYRO_XYZ", ICM20948_GRYO_XOUT_H, 6)
                 pause(100)
                 serial.writeLine("TEMP_OUT_H = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_TEMP_OUT_H)))
                 pause(100)
                 serial.writeLine("TEMP_OUT_L = " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_TEMP_OUT_L)))
                 // serial.writeLine("EXT_SLV_SENS_DATA_XYZ " + toHex(i2cReadByte(ICM20948_I2C_ADDR, ICM20948_EXT_SLV_SENS_DATA_00)))
-                this.dumpIcmReadingsLE("SLAVE_MAG_XYZ", ICM20948_EXT_SLV_SENS_DATA_00, 6)
+                this.dumpIcmWordsLE("SLAVE_MAG_XYZ", ICM20948_EXT_SLV_SENS_DATA_00, 6)
                 pause(100)
 
                 break
@@ -787,7 +782,7 @@ class ICM20948 {
                 pause(100)
                 serial.writeLine("AK09916_ST1 = " + toHex(this.readMagByte(AK09916_ST1)))
                 pause(100)
-                this.dumpMagReadings("AK09916_HXL...", AK09916_HXL, 6) // sensor data
+                this.dumpMagWordsBE("AK09916_HXL...", AK09916_HXL, 6) // sensor data
                 pause(100)
                 serial.writeLine("AK09916_ST2 = " + toHex(this.readMagByte(AK09916_ST2)))
                 pause(100)
@@ -799,7 +794,7 @@ class ICM20948 {
         }
     }
     /** construct and dump some 2-byte big-endian ICM words */
-    dumpIcmReadingsBE(fromName: string, fromReg: number, length: number) {
+    dumpIcmWordsBE(fromName: string, fromReg: number, length: number) {
         for (let i = 0; i < length; i+=2) {
             let hi = toHex(i2cReadByte(ICM20948_I2C_ADDR, fromReg + i))
             let lo = toHex(i2cReadByte(ICM20948_I2C_ADDR, fromReg + i + 1))
@@ -809,7 +804,7 @@ class ICM20948 {
 
     /** construct and dump some 2-byte little-endian ICM words */
     // (used for LE mag data read indirectly, in master-slave mode)
-    dumpIcmReadingsLE(fromName: string, fromReg: number, length: number) {
+    dumpIcmWordsLE(fromName: string, fromReg: number, length: number) {
         for (let i = 0; i < length; i += 2) {
             let lo = toHex(i2cReadByte(ICM20948_I2C_ADDR, fromReg + i))
             let hi = toHex(i2cReadByte(ICM20948_I2C_ADDR, fromReg + i + 1))
@@ -818,7 +813,7 @@ class ICM20948 {
     }
 
     /** construct and dump some 2-byte little-endian magnetometer words */
-    dumpMagReadings(fromName:string, fromReg:number, length:number){
+    dumpMagWordsBE(fromName:string, fromReg:number, length:number){
         for (let i = 0; i < length; i += 2) {
             let lo = toHex(this.readMagByte(fromReg + i))
             let hi = toHex(this.readMagByte(fromReg + i + 1))

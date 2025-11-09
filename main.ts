@@ -3,7 +3,8 @@ serial.redirectToUSB()
 let mode = ShowMode.SERIAL
 
 basic.showString("Hello!")
-Show.see(mode,"STARTING UP...")
+Show.see(mode, "STARTING UP...")
+pause(1000)
 
 // connect to the ICM and separately to the MAG
 let sensor = new ICM20948(ICM20948_I2C_ADDR, true)
@@ -16,6 +17,11 @@ basic.showString("init:"+sensor.status)
 //sensor.dumpRegisters(4)
 //basic.showString("dumped")
 pause(1000)
+
+if ((sensor.status & STATUS_MAG_FOUND) > 0) {
+    basic.showIcon(IconNames.Happy)
+    pause(1000)
+}
 
 let t = Math.floor(sensor.readTemperature()/10)*10
 
