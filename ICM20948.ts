@@ -417,10 +417,10 @@ class ICM20948 {
         /* Property to read the current IMU temperature */
         // PWR_MGMT_1 defaults to leave temperature enabled
         this.useBank(0)
-        this.dumpIcmWordsBE("tempRaw = ", ICM20948_TEMP_OUT_H, 2)
-        let tempBytes = i2cReadData(this.icm, ICM20948_TEMP_OUT_H, 2)
-        let tempRaw = (tempBytes[0] << 8) + tempBytes[1]
-        let degC = ((tempRaw - ICM20948_ROOM_TEMP_OFFSET) / ICM20948_TEMPERATURE_SENSITIVITY) + ICM20948_TEMPERATURE_DEGREES_OFFSET
+        //let tempBytes = i2cReadData(this.icm, ICM20948_TEMP_OUT_H, 2)
+        //let tempRaw = (tempBytes[0] << 8) + tempBytes[1]
+        let tempRaw = i2cReadWordsBE(this.icm, ICM20948_TEMP_OUT_H, 1)
+        let degC = ((tempRaw[0] - ICM20948_ROOM_TEMP_OFFSET) / ICM20948_TEMPERATURE_SENSITIVITY) + ICM20948_TEMPERATURE_DEGREES_OFFSET
         return degC
     }
 
