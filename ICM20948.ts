@@ -216,8 +216,8 @@ class ICM20948 {
         return this.status
     }
 
-    /** read and return Accelerometer & Gyro */
-    senseIcm() {
+    /** read and return Accelerometer components */
+    senseAccel() {
         let rdy = 0
         /* ?? make sure a reading has been taken (RAW_DATA_0_RDY_INT bit is set)
         while (rdy == 0) {
@@ -226,20 +226,20 @@ class ICM20948 {
         }
         */
 
-    // latest Accelerometer and Gyro readings are parked in the output space
+        // latest Accelerometer readings are parked in the output space
         this.useBank(0)
-        /*
-        let byteArray = i2cReadData(this.icm, ICM20948_ACCEL_XOUT_H, 12)
 
-        
-        // dissect these 12 bytes into six big-endian 16-bit readings
+        /*
+        let byteArray = i2cReadData(this.icm, ICM20948_ACCEL_XOUT_H, 6)
+        // dissect these 6 bytes into three big-endian 16-bit readings
         let vals = [] 
-        for (let i=0; i<12; i+=2) {
+        for (let i=0; i<6; i+=2) {
             let val =  (byteArray[i]<<8) | byteArray[i+1]
             //Show.see(i + ':' + val)
             vals.push(val)
         }*/
-        let vals = i2cReadWordsBE(ICM20948_ACCEL_XOUT_H,6)
+
+        let vals = i2cReadWordsBE(this.icm, ICM20948_ACCEL_XOUT_H, 6)
 
         // Rescale the raw readings...
         // Read accelerometer full scale range setting
@@ -254,24 +254,55 @@ class ICM20948 {
         vals[1] /= scale
         vals[2] /= scale
 
-        // Read back the spin-rate range setting and
-        // use it to compensate the reading to dps
-        range = (i2cReadByte(this.icm, ICM20948_GYRO_CONFIG_1) & 0x06) >> 1
-
-        // (scale ranges taken from section 3.1 of the datasheet)
-        // 0xFFFF =     [250, 500, 1000, 2000] dps
-        scale = [131, 65.5, 32.8, 16.4][range]
-
-        vals[3] /= scale
-        vals[4] /= scale
-        vals[5] /= scale
-
         return vals
     }
 
-    senseMag(timeout = 1.0) {
-        /* 
 
+
+    /** read and return Gyro components*/
+    senseGyro() {
+        let rdy = 0
+        /* ?? make sure a reading has been taken (RAW_DATA_0_RDY_INT bit is set)
+        while (rdy == 0) {
+            rdy = i2cReadByte(this.icm, ICM20948_INT_STATUS_1) & 0x01
+            Show.see(mode,"?")
+        }
+        */
+
+        // latest Gyro readings are parked in the output space
+        this.useBank(0)
+        /*
+        let byteArray = i2cReadData(this.icm, ICM20948_GYRO_XOUT_H, 6)
+
+        
+        // dissect these 6 bytes into three big-endian 16-bit readings
+        let vals = [] 
+        for (let i=0; i<6; i+=2) {
+            let val =  (byteArray[i]<<8) | byteArray[i+1]
+            //Show.see(i + ':' + val)
+            vals.push(val)
+        }*/
+
+        let vals = i2cReadWordsBE(this.icm, ICM20948_GRYO_XOUT_H, 3)
+
+
+        // Read back the spin-rate range setting and
+        // use it to rescale the reading into degrees-per-sec
+        let range = (i2cReadByte(this.icm, ICM20948_GYRO_CONFIG_1) & 0x06) >> 1
+
+        // (scale ranges taken from section 3.1 of the datasheet)
+        // 0xFFFF =     [250, 500, 1000, 2000] dps
+        let scale = [131, 65.5, 32.8, 16.4][range]
+
+        vals[0] /= scale
+        vals[1] /= scale
+        vals[2] /= scale
+
+        return vals
+    }
+    
+    senseMag(timeout = 1000) {
+        /* 
         self.mag_write(AK09916_CNTL2, 0x01)  # Trigger single measurement
         t_start = time.time()
         while not self.magnetometer_ready():
@@ -292,6 +323,7 @@ class ICM20948 {
             }
             control.waitMicros(10) //time.sleep(0.00001)
         }
+
         let byteArray = this.readMagData(AK09916_HXL, 6)
 
         // Read ST2 to inform chip that read finished,

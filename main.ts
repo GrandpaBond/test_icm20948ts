@@ -46,36 +46,28 @@ input.onButtonPressed(Button.A, function () {
     basic.showString(tests[test])
 })
 
+let accelData: number[]
+let gyroData: number[]
 let magData:number[]
-let icmData:number[]
 
 input.onButtonPressed(Button.B, function () {
     // acquire the data
     switch(test) {
        
         case Tests.ACCEL:
-        case Tests.GYRO:
-            icmData = sensor.senseIcm() // 6 values
-            break
-        case Tests.MAG:
-            magData = sensor.senseMag() // 3 values
-            break
-    }
-
-    basic.showIcon(IconNames.Yes)
-
-    // now display it
-    switch (test) {
-        case Tests.ACCEL:
-            report3("Accel", icmData.slice(0,3))
+            accelData = sensor.senseAccel()
+            report3("Accel", accelData)
             break
         case Tests.GYRO:
-            report3("Gyro", icmData.slice(3))
+            gyroData = sensor.senseGyro()
+            report3("Gyro", gyroData)
             break
         case Tests.MAG:
+            magData = sensor.senseMag()
             report3("Mag", magData)
             break
     }
+    basic.showIcon(IconNames.Yes)
 })
    
 /** display X,Y,Z data values  */
