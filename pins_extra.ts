@@ -20,13 +20,23 @@ function i2cReadData(address: number, register: number, length = 1):number[] {
     let buffer = pins.createBuffer(length)
     pins.i2cWriteNumber(address, register, NumberFormat.UInt8LE) // select register
     buffer = pins.i2cReadBuffer(address, length, true) //read and Return
-    Show.see(mode, "[" )
-    for (let n=0; n<6; n+=2){
-        let v = buffer.getNumber(NumberFormat.Int16BE, n)
-        Show.see(mode, v + ",")
-    }
-    Show.see(mode, "]")
     let vals = buffer.toArray(NumberFormat.UInt8LE)
+    return vals
+}
+/** Read an array of bytes from this I2C address, starting from given register. */
+function i2cReadWordsBE(address: number, register: number, length = 1): number[] {
+    let buffer = pins.createBuffer(2*length)
+    pins.i2cWriteNumber(address, register, NumberFormat.UInt8LE) // select register
+    buffer = pins.i2cReadBuffer(address, length, true) //read and Return
+    let vals = buffer.toArray(NumberFormat.UInt16BE)
+    return vals
+}
+/** Read an array of bytes from this I2C address, starting from given register. */
+function i2cReadWordsLE(address: number, register: number, length = 1): number[] {
+    let buffer = pins.createBuffer(2*length)
+    pins.i2cWriteNumber(address, register, NumberFormat.UInt8LE) // select register
+    buffer = pins.i2cReadBuffer(address, length, true) //read and Return
+    let vals = buffer.toArray(NumberFormat.UInt16LE)
     return vals
 }
 
@@ -39,10 +49,11 @@ function i2cRegisterFlags(address: number, register: number, unsetMask: number, 
     control.waitMicros(10)
 }
 
+/** utility */
 function toHex(byte:number){
     const hex = ["0","1","2","3","4","5","6","7","8","9","A","B","C","D","E","F"]
     // HACK: insert a short delay here to help prevent serial output overruns elsewhere...
-    basic.pause(10)
+    //basic.pause(10)
     return '0x'+hex[byte>>4]+hex[byte&0xf]
 }
 //************************************************************************** */

@@ -23,9 +23,12 @@ if ((sensor.status & STATUS_MAG_FOUND) > 0) {
     pause(1000)
 }
 
-let t = Math.floor(sensor.readTemperature()/10)*10
+// try a simple multi-byte read 
+let rawT = sensor.readTemperature()
+//Show.see(mode,"rawT:" + rawT)
+let t = Math.floor(rawT/10)*10
+//Show.see(mode,"temp:" + t)
 
-Show.see(mode,"temp:" + t)
 
 enum Tests {
     ACCEL,
@@ -81,7 +84,8 @@ function report3(title:string, data: number[]) {
     pause(1000)
     Show.see(mode,title)
     for(let i=0; i<3; i++) {
-        Show.see(mode,title[0] + tags[i] + "=" + data[i])
+        let v = Math.round(data[i]*1000)/1000
+        Show.see(mode,title[0] + tags[i] + "=" + v)
     }
     pause(1000)
 }
