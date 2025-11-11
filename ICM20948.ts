@@ -324,7 +324,7 @@ class ICM20948 {
             control.waitMicros(10) //time.sleep(0.00001)
         }
 
-        let byteArray = this.readMagData(AK09916_HXL, 6)
+        let byteArray = this.readMagWordsLE(AK09916_HXL, 3)
 
         // Read ST2 to inform chip that read finished,
         // (needed in continuous modes to unlock next sample)
@@ -343,7 +343,7 @@ class ICM20948 {
         return vals
     }
 
-    magIsReady() {
+    magIsReady():boolean {
         /* Check the magnetometer status ready bit. */
         return ((this.readMagByte(AK09916_ST1) & AK09916_ST1_DRDY) > 0)
     }
@@ -549,9 +549,9 @@ class ICM20948 {
                                 : this.magReadByte(reg)
     }
 
-    readMagData(reg:number, length = 1):number[] {
-        return this.magIsDirect ? i2cReadData(this.mag, reg, length)
-                                : this.magReadData(reg, length)
+    readMagWordsLE(reg:number, length = 1):number[] {
+        return this.magIsDirect ? i2cReadWordsLE(this.mag, reg, length)
+                                : this.magReadWordsLE(reg, length)
     }
     
     // ************** Magnetometer I/O when using Master-Slave mode ***************
@@ -579,8 +579,8 @@ class ICM20948 {
         return i2cReadByte(this.icm, ICM20948_EXT_SLV_SENS_DATA_00)
     }
 
-    /** Read up to 24 bytes from the slave magnetometer. */
-    magReadData(reg:number, length = 1):number[] {
+    /** Read 12 bytes from the slave magnetometer. */
+    magReadWordsLE(reg:number, length:number):number[] {
         /*set up slave0 for reading into the bank 0 data registers
         def _setup_mag_readout(self) -> None:
         self._bank = 3
@@ -590,14 +590,15 @@ class ICM20948 {
         sleep(0.005)
         self._slave0_ctrl = 0x89  # enable == 0b 10001001 = SLV_ENABLE | length:9
         sleep(0.005)*/
-        // Set up a read access using Slave 0 register-set in bank 3
+        
+        // Set up a read access for 6 bytes using Slave 0 register-set in bank 3
         this.useBank(3)
         i2cWriteByte(this.icm, ICM20948_I2C_SLV0_ADDR, AK09916_I2C_ADDR | ICM20948_I2C_SLV_ADDR_RNW)
         i2cWriteByte(this.icm, ICM20948_I2C_SLV0_REG, reg)
         i2cWriteByte(this.icm, ICM20948_I2C_SLV0_DO, 0xff) // irrelevant
         i2cWriteByte(this.icm, ICM20948_I2C_SLV0_CTRL, ICM20948_I2C_SLV_CTRL_SLV_ENABLE | length)
         this.magSlaveGo() // initiate indirect transfer
-        return i2cReadData(ICM20948_EXT_SLV_SENS_DATA_00, length)
+        return i2cReadWordsLE(this.icm, ICM20948_EXT_SLV_SENS_DATA_00, length)
     }
 
 
