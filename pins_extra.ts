@@ -29,10 +29,6 @@ function i2cReadWordsBE(address:number, register:number, length: number): number
     let buffer = pins.createBuffer(2*length)
     pins.i2cWriteNumber(address, register, NumberFormat.UInt8LE)
     buffer = pins.i2cReadBuffer(address, 2 * length, true)
-    Show.see(mode, "bytes: " + buffer.length)
-    Show.see(mode, "X:" + buffer.getNumber(NumberFormat.Int16BE, 0))
-    Show.see(mode, "Y:" + buffer.getNumber(NumberFormat.Int16BE, 2))
-    Show.see(mode, "Z:" + buffer.getNumber(NumberFormat.Int16BE, 4))
     let vals = buffer.toArray(NumberFormat.UInt16BE)
     return vals
 }
@@ -43,9 +39,9 @@ function i2cReadWordsLE(address:number, register:number, length:number): number[
     pins.i2cWriteNumber(address, register, NumberFormat.UInt8LE)
     buffer = pins.i2cReadBuffer(address, 2 * length, true)
     Show.see(mode, "bytes: " + buffer.length)
-    Show.see(mode, "X:" + buffer.getNumber(NumberFormat.Int16LE, 0))
-    Show.see(mode, "Y:" + buffer.getNumber(NumberFormat.Int16LE, 2))
-    Show.see(mode, "Z:" + buffer.getNumber(NumberFormat.Int16LE, 4))
+    Show.see(ShowMode.LOGGED, "X:" + buffer.getNumber(NumberFormat.Int16LE, 0))
+    Show.see(ShowMode.LOGGED, "Y:" + buffer.getNumber(NumberFormat.Int16LE, 2))
+    Show.see(ShowMode.LOGGED, "Z:" + buffer.getNumber(NumberFormat.Int16LE, 4))
     let vals = buffer.toArray(NumberFormat.UInt16LE)
     return vals
 }

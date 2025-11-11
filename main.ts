@@ -19,7 +19,7 @@ if ((sensor.status & STATUS_MAG_FOUND) > 0) {
 // try a simple multi-byte read 
 let rawT = sensor.readTemperature()
 //Show.see(mode,"rawT:" + rawT)
-let t = Math.floor(rawT/10)*10
+let t = Math.floor(rawT*100)/100
 Show.see(mode,"temp:" + t)
 
 enum Tests {
@@ -28,21 +28,36 @@ enum Tests {
     MAG
 }
 
-// select sensor to test
-let test = 0
-let tests = ['A', 'G', 'M']
-let active = false
-
-input.onButtonPressed(Button.A, function () {
-    pause(500)
-    test = (test+1) % 3
-    basic.showString(tests[test])
-})
-
 let accelData: number[]
 let gyroData: number[]
 let magData:number[]
 
+// select sensor to test
+let test = 0
+let testsOn = ['A', 'G', 'M']
+let testsOff = ['a', 'g', 'm']
+basic.showString(testsOff[test])
+pause(1000)
+basic.clearScreen()
+let active = false
+
+input.onButtonPressed(Button.AB, function() {
+    // clear down the log-file
+    datalogger.deleteLog()
+    datalogger.includeTimestamp(FlashLogTimeStampFormat.None)
+    basic.showIcon(IconNames.No)
+})
+
+// Button A cycles to next testsOff
+input.onButtonPressed(Button.A, function () {
+    active = false
+    test = (test+1) % 3
+    basic.showString(testsOff[test])
+    pause(1000)
+    basic.clearScreen()
+})
+
+// Button B toggles current test on/off
 input.onButtonPressed(Button.B, function () {
     if (active) {
         active = false
@@ -51,41 +66,40 @@ input.onButtonPressed(Button.B, function () {
     }
 })
 
+
 while(true) {
     if (active) {
         // acquire the data
         switch (test) {
             case Tests.ACCEL:
                 accelData = sensor.senseAccel()
-                datalogger.log(datalogger.createCV("AX", accelData[0]))
-                datalogger.log(datalogger.createCV("AY", accelData[1]))
-                datalogger.log(datalogger.createCV("AZ", accelData[2]))
-                //report3("Accel", accelData)
+                datalogger.log(
+                    datalogger.createCV("AX", accelData[0]),
+                    datalogger.createCV("AY", accelData[1]),
+                    datalogger.createCV("AZ", accelData[2]))
                 break
             case Tests.GYRO:
                 gyroData = sensor.senseGyro()
-                //report3("Gyro", gyroData)
+                datalogger.log(
+                    datalogger.createCV("GX", gyroData[0]),
+                    datalogger.createCV("GY", gyroData[1]),
+                    datalogger.createCV("GZ", gyroData[2]))
                 break
             case Tests.MAG:
                 magData = sensor.senseMag()
-                //report3("Mag", magData)
+                datalogger.log(
+                    datalogger.createCV("MX", magData[0]),
+                    datalogger.createCV("MY", magData[1]),
+                    datalogger.createCV("MZ", magData[2]))
                 break
+                
         }
-        basic.showIcon(IconNames.Yes)
-        pause(1000)
         basic.clearScreen()
+        pause(200)
+        basic.showString(testsOn[test])
+    } else {
+        basic.clearScreen()
+        pause(200)
+        basic.showString(testsOff[test])
     }
-}
-
-   
-/** display X,Y,Z data values  */
-function report3(title:string, data: number[]) {
-    let tags = ['X', 'Y', 'Z']
-    pause(1000)
-    Show.see(mode,title)
-    for(let i=0; i<3; i++) {
-        let v = Math.round(data[i]*1000)/1000
-        Show.see(mode,title[0] + tags[i] + "=" + v)
-    }
-    pause(1000)
 }

@@ -5,7 +5,6 @@ enum ShowMode {
     SERIAL = 3
 }
 namespace Show{
-
     /** Display message in current output mode */
     export function see(mode:ShowMode, message:string) {
         switch(mode){
@@ -17,7 +16,7 @@ namespace Show{
                 basic.clearScreen()
                 break
             case ShowMode.LOGGED:
-                datalogger.log(datalogger.createCV('message',message))
+                datalogger.log(datalogger.createCV('message:',message))
                 break
             case ShowMode.SERIAL:
                 serial.writeLine(message)
