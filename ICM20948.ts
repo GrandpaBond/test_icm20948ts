@@ -314,29 +314,34 @@ class ICM20948 {
 
         */
         //this.magWriteByte(AK09916_CNTL2, 0x01)  // Trigger a single measurement
-        // The magnetometer should be in continuous measurement mode so
-        // poll the Data Ready flag until set...
-        let t_start = control.millis()
-        while (!this.magIsReady()) {
-            if ((control.millis() - t_start) > timeout) {
+    // Note that magnetometer is either connected directly, or each read and write
+    // must be negotiated as an indirect Master-Slave conversation!
+
+        // The magnetometer should be in continuous measurement mode,
+        // so we just need to repeatedly poll its Data Ready flag until set...
+        let began = control.millis()
+        let ready = false
+        while (!ready) {
+            if ((control.millis() - began) > timeout) {
                 serial.writeLine('Timeout waiting for Magnetometer Ready')
                 break
             }
-            control.waitMicros(10) //time.sleep(0.00001)
+            control.waitMicros(50)
+            // is the magnetometer status data-ready bit, DRDY, set yet?
+            ready = (this.readMagByte(AK09916_ST2) & AK09916_ST1_DRDY) > 0
         }
 
-        // read the 3 16-bit little-endian components starting at AK09916_HXL
+        // Now read the 3 16-bit little-endian components, starting at AK09916_HXL
         let vals = this.readMagWordsLE(AK09916_HXL, 3)
 
-        // Read ST2 to inform chip that the read has occurred
-        // (needed in continuous modes to unlock next sample)
+        // Finally, read ST2, which informs the chip that the read has completed
+        // (needed in continuous modes to unlock further samples)
         let status = this.readMagByte(AK09916_ST2)
 
         // check for sensor overflow condition
         if ((status & AK09916_ST2_HOFL) > 0) {
             serial.writeLine('Magnetometer Sensor overflow detected')
         }
-
         // Scale raw values by 0.15, to give magnetic flux density "uT"
         // (see section 3.3 of the datasheet)
         for (let i=0; i<3; i ++) {
