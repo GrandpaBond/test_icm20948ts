@@ -23,6 +23,7 @@ let t = Math.floor(rawT*100)/100
 Show.see(mode,"temp:" + t)
 
 enum Tests {
+    SENSE,
     ACCEL,
     GYRO,
     MAG
@@ -34,8 +35,8 @@ let magData:number[]
 
 // select sensor to test
 let test = 0
-let testsOn = ['A', 'G', 'M']
-let testsOff = ['a', 'g', 'm']
+let testsOn = ['S', 'A', 'G', 'M']
+let testsOff = ['s', 'a', 'g', 'm']
 basic.showString(testsOff[test])
 pause(1000)
 basic.clearScreen()
@@ -45,7 +46,7 @@ input.onButtonPressed(Button.AB, function() {
     // clear down the log-file
     datalogger.deleteLog()
     datalogger.includeTimestamp(FlashLogTimeStampFormat.None)
-    basic.showIcon(IconNames.No)
+    basic.showIcon(IconNames.Scissors)
 })
 
 // Button A cycles to next testsOff
@@ -69,8 +70,21 @@ input.onButtonPressed(Button.B, function () {
 
 while(true) {
     if (active) {
-        // acquire the data
         switch (test) {
+            case Tests.SENSE:
+                accelData = sensor.senseAccel()
+                gyroData = sensor.senseGyro()
+                magData = sensor.senseMag()
+                datalogger.log(
+                    datalogger.createCV("AX", accelData[0]),
+                    datalogger.createCV("AY", accelData[1]),
+                    datalogger.createCV("AZ", accelData[2]),
+                    datalogger.createCV("GX", gyroData[0]),
+                    datalogger.createCV("GY", gyroData[1]),
+                    datalogger.createCV("GZ", gyroData[2]),
+                    datalogger.createCV("MX", magData[0]),
+                    datalogger.createCV("MY", magData[1]),
+                    datalogger.createCV("MZ", magData[2]))
             case Tests.ACCEL:
                 accelData = sensor.senseAccel()
                 datalogger.log(

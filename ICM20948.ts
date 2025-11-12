@@ -324,22 +324,18 @@ class ICM20948 {
             control.waitMicros(10) //time.sleep(0.00001)
         }
 
-        let byteArray = this.readMagWordsLE(AK09916_HXL, 3)
+        // read 3 16-bit little-endian components
+        let vals = this.readMagWordsLE(AK09916_HXL, 3)
 
         // Read ST2 to inform chip that read finished,
         // (needed in continuous modes to unlock next sample)
         this.readMagByte(AK09916_ST2)
 
-        // dissect these 6 bytes into 3 big-endian 16-bit readings
-        let vals = []
-        for (let i = 0; i < 6; i += 2) {
-            let val = (byteArray[i] << 8) | byteArray[i + 1]
-            // Scale raw values by 0.15, giving magnetic flux density "uT"
-            // (see) section 3.3 of the datasheet)
-            //Show.see(i + ':' + val * 0.15)
-            vals.push(val)
+        // Scale raw values by 0.15, to give magnetic flux density "uT"
+        // (see section 3.3 of the datasheet)
+        for (let i=0; i<3; i ++) {
+            vals[i] *= 0.15
         }
-
         return vals
     }
 
@@ -517,20 +513,12 @@ class ICM20948 {
 
     /** Reset the magnetometer */
     magInitialise() {
-
-/*
-        # Reset the magnetometer
-        self.mag_write(AK09916_CNTL3, 0x01)
-        while self.mag_read(AK09916_CNTL3) == 0x01:
-            time.sleep(0.0001)
-*/
-
         this.magWriteByte(AK09916_CNTL3, 0x01)
         while (this.magReadByte(AK09916_CNTL3) == 0x01) {
             control.waitMicros(100)
         }
-        // set operating mode to one-shot single readings
-        this.magWriteByte(AK09916_CNTL2, AK09916_CNTL2_MODE_SINGLE)
+        // set operating mode to continuous readings
+        this.magWriteByte(AK09916_CNTL2, AK09916_CNTL2_MODE_CONT4_100Hz)
         
     }
 
