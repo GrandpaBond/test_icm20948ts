@@ -313,23 +313,29 @@ class ICM20948 {
         data = self.mag_read_bytes(AK09916_HXL, 6)
 
         */
-        this.magWriteByte(AK09916_CNTL2, 0x01)  // Trigger a single measurement
+        //this.magWriteByte(AK09916_CNTL2, 0x01)  // Trigger a single measurement
+        // The magnetometer should be in continuous measurement mode so
+        // poll the Data Ready flag until set...
         let t_start = control.millis()
-        let data:Buffer
         while (!this.magIsReady()) {
-            if (control.millis() - t_start > timeout) {
+            if ((control.millis() - t_start) > timeout) {
                 serial.writeLine('Timeout waiting for Magnetometer Ready')
                 break
             }
             control.waitMicros(10) //time.sleep(0.00001)
         }
 
-        // read 3 16-bit little-endian components
+        // read the 3 16-bit little-endian components starting at AK09916_HXL
         let vals = this.readMagWordsLE(AK09916_HXL, 3)
 
-        // Read ST2 to inform chip that read finished,
+        // Read ST2 to inform chip that the read has occurred
         // (needed in continuous modes to unlock next sample)
-        this.readMagByte(AK09916_ST2)
+        let status = this.readMagByte(AK09916_ST2)
+
+        // check for sensor overflow condition
+        if ((status & AK09916_ST2_HOFL) > 0) {
+            serial.writeLine('Magnetometer Sensor overflow detected')
+        }
 
         // Scale raw values by 0.15, to give magnetic flux density "uT"
         // (see section 3.3 of the datasheet)
@@ -339,8 +345,8 @@ class ICM20948 {
         return vals
     }
 
+    /** Is the magnetometer status data-ready bit, DRDY, set? */
     magIsReady():boolean {
-        /* Check the magnetometer status ready bit. */
         return ((this.readMagByte(AK09916_ST1) & AK09916_ST1_DRDY) > 0)
     }
 
@@ -567,24 +573,27 @@ class ICM20948 {
         return i2cReadByte(this.icm, ICM20948_EXT_SLV_SENS_DATA_00)
     }
 
-    /** Read 12 bytes from the slave magnetometer. */
+    /** Read little-endian words from the magnetometer, connected as slave. */
     magReadWordsLE(reg:number, length:number):number[] {
         /*set up slave0 for reading into the bank 0 data registers
         def _setup_mag_readout(self) -> None:
         self._bank = 3
-        self._slave0_addr = 0x8C  OK
+        self._slave0_addr = 0x8C  (i2C address 0x0C, with top RNW bit set )
         sleep(0.005)
         self._slave0_reg = 0x11 == 17 == AK09916_HXL
         sleep(0.005)
         self._slave0_ctrl = 0x89  # enable == 0b 10001001 = SLV_ENABLE | length:9
         sleep(0.005)*/
         
-        // Set up a read access for 6 bytes using Slave 0 register-set in bank 3
+        // Set up a read access [length] words using Slave 0 register-set in bank 3
         this.useBank(3)
         i2cWriteByte(this.icm, ICM20948_I2C_SLV0_ADDR, AK09916_I2C_ADDR | ICM20948_I2C_SLV_ADDR_RNW)
+        control.waitMicros(500)
         i2cWriteByte(this.icm, ICM20948_I2C_SLV0_REG, reg)
-        i2cWriteByte(this.icm, ICM20948_I2C_SLV0_DO, 0xff) // irrelevant
+        control.waitMicros(500)
+        //i2cWriteByte(this.icm, ICM20948_I2C_SLV0_DO, 0xff)  irrelevant
         i2cWriteByte(this.icm, ICM20948_I2C_SLV0_CTRL, ICM20948_I2C_SLV_CTRL_SLV_ENABLE | length)
+        control.waitMicros(500)
         this.magSlaveGo() // initiate indirect transfer
         return i2cReadWordsLE(this.icm, ICM20948_EXT_SLV_SENS_DATA_00, length)
     }
@@ -604,7 +613,7 @@ class ICM20948 {
         this.useBank(0)
         i2cRegisterFlags(this.icm, ICM20948_USER_CTRL, 0, ICM20948_USER_CTRL_I2C_MST_EN)
         // eventually, wait for slave to report data is ready?
-        control.waitMicros(5000) // =5ms
+        control.waitMicros(500) // =5ms
         // now unset Master Enable
         i2cRegisterFlags(this.icm, ICM20948_USER_CTRL, ICM20948_USER_CTRL_I2C_MST_EN, 0)
     }
