@@ -15,33 +15,24 @@ function i2cReadByte(address: number, register: number) {
     return pins.i2cReadNumber(address, NumberFormat.UInt8LE, false) // read and return
 }
 
-/** Read an array of bytes from this I2C address, starting from given register. */
-function i2cReadData(address: number, register: number, length = 1):number[] {
+/** Read a Buffer (array of bytes) from this I2C address, starting from given register. */
+function i2cReadBuffer(address: number, register: number, length = 1):Buffer {
     let buffer = pins.createBuffer(length)
     pins.i2cWriteNumber(address, register, NumberFormat.UInt8LE)
     buffer = pins.i2cReadBuffer(address, length, true)
-    let vals = buffer.toArray(NumberFormat.UInt8LE)
-    return vals
+    return buffer
 }
 
 /** Read an array of big-endian words from this I2C address, starting from given register. */
 function i2cReadWordsBE(address:number, register:number, length: number): number[] {
-    let buffer = pins.createBuffer(2*length)
-    pins.i2cWriteNumber(address, register, NumberFormat.UInt8LE)
-    buffer = pins.i2cReadBuffer(address, 2 * length, true)
+    let buffer = i2cReadBuffer(address, register, 2*length)
     let vals = buffer.toArray(NumberFormat.UInt16BE)
     return vals
 }
 
 /** Read an array of little-endian words from this I2C address, starting from given register. */
 function i2cReadWordsLE(address:number, register:number, length:number): number[] {
-    let buffer = pins.createBuffer(2*length)
-    pins.i2cWriteNumber(address, register, NumberFormat.UInt8LE)
-    buffer = pins.i2cReadBuffer(address, 2 * length, true)
-    Show.see(mode, "bytes: " + buffer.length)
-    Show.see(ShowMode.LOGGED, "X:" + buffer.getNumber(NumberFormat.Int16LE, 0))
-    Show.see(ShowMode.LOGGED, "Y:" + buffer.getNumber(NumberFormat.Int16LE, 2))
-    Show.see(ShowMode.LOGGED, "Z:" + buffer.getNumber(NumberFormat.Int16LE, 4))
+    let buffer = i2cReadBuffer(address, register, 2*length)
     let vals = buffer.toArray(NumberFormat.UInt16LE)
     return vals
 }

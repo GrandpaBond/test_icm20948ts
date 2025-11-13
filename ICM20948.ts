@@ -302,6 +302,7 @@ class ICM20948 {
     }
     
     senseMag(timeout = 1000) {
+        let vals = [111,222,333]
         /* 
         self.mag_write(AK09916_CNTL2, 0x01)  # Trigger single measurement
         t_start = time.time()
@@ -314,6 +315,8 @@ class ICM20948 {
 
         */
         //this.magWriteByte(AK09916_CNTL2, 0x01)  // Trigger a single measurement
+    
+    
     // Note that magnetometer is either connected directly, or each read and write
     // must be negotiated as an indirect Master-Slave conversation!
 
@@ -331,30 +334,33 @@ class ICM20948 {
             ready = (this.readMagByte(AK09916_ST2) & AK09916_ST1_DRDY) > 0
         }
 
+        if (ready) {
         // Now read the 3 16-bit little-endian components, starting at AK09916_HXL
-        let vals = this.readMagWordsLE(AK09916_HXL, 3)
+            vals = this.readMagWordsLE(AK09916_HXL, 3)
 
-        // Finally, read ST2, which informs the chip that the read has completed
-        // (needed in continuous modes to unlock further samples)
-        let status = this.readMagByte(AK09916_ST2)
+            // Finally, read ST2, which informs the chip that the read has completed
+            // (needed in continuous modes to unlock further samples)
+            let status = this.readMagByte(AK09916_ST2)
 
-        // check for sensor overflow condition
-        if ((status & AK09916_ST2_HOFL) > 0) {
-            serial.writeLine('Magnetometer Sensor overflow detected')
+            // check for sensor overflow condition
+            if ((status & AK09916_ST2_HOFL) > 0) {
+                serial.writeLine('Magnetometer Sensor overflow detected')
+            }
+            // Scale raw values by 0.15, to give magnetic flux density "uT"
+            // (see section 3.3 of the datasheet)
+            for (let i=0; i<3; i ++) {
+                vals[i] *= 0.15
+            }
         }
-        // Scale raw values by 0.15, to give magnetic flux density "uT"
-        // (see section 3.3 of the datasheet)
-        for (let i=0; i<3; i ++) {
-            vals[i] *= 0.15
-        }
+
         return vals
     }
 
-    /** Is the magnetometer status data-ready bit, DRDY, set? */
+    /** Is the magnetometer status data-ready bit, DRDY, set?
     magIsReady():boolean {
         return ((this.readMagByte(AK09916_ST1) & AK09916_ST1_DRDY) > 0)
     }
-
+ */
     setAccelSampleRate(rate = 125) {
         /* Set the accelerometer sample rate in Hz. */
         // 125Hz - 1.125 kHz / (1 + rate)

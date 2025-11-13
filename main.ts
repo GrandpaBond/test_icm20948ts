@@ -8,7 +8,8 @@ Show.see(mode, "STARTING UP...")
 pause(1000)
 
 // connect to the ICM and separately to the MAG
-let sensor = new ICM20948(ICM20948_I2C_ADDR, true) // address Mag directly
+// let sensor = new ICM20948(ICM20948_I2C_ADDR, true) address Mag directly
+let sensor = new ICM20948(ICM20948_I2C_ADDR, false) // address Mag indirectly
 pause(1000)
 
 if ((sensor.status & STATUS_MAG_FOUND) > 0) {
@@ -41,6 +42,7 @@ basic.showString(testsOff[test])
 pause(1000)
 basic.clearScreen()
 let active = false
+sensor.dumpMagWordsBE('MAG',0,16)
 
 input.onButtonPressed(Button.AB, function() {
     // clear down the log-file
@@ -85,6 +87,7 @@ while(true) {
                     datalogger.createCV("MX", magData[0]),
                     datalogger.createCV("MY", magData[1]),
                     datalogger.createCV("MZ", magData[2]))
+                break
             case Tests.ACCEL:
                 accelData = sensor.senseAccel()
                 datalogger.log(
