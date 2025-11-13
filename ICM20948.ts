@@ -314,12 +314,12 @@ class ICM20948 {
         data = self.mag_read_bytes(AK09916_HXL, 6)
 
         */
-        //this.magWriteByte(AK09916_CNTL2, 0x01)  // Trigger a single measurement
+    this.magWriteByte(AK09916_CNTL2, 0x01)  // Trigger a single measurement
     
     
     // Note that magnetometer is either connected directly, or each read and write
     // must be negotiated as an indirect Master-Slave conversation!
-
+        this.dumpRegisters(4)
         // The magnetometer should be in continuous measurement mode,
         // so we just need to repeatedly poll its Data Ready flag until set...
         let began = control.millis()
@@ -352,7 +352,7 @@ class ICM20948 {
                 vals[i] *= 0.15
             }
         }
-
+        this.dumpRegisters(4)
         return vals
     }
 
@@ -822,7 +822,11 @@ class ICM20948 {
                 pause(100)
                 serial.writeLine("AK09916_ST1 = " + toHex(this.readMagByte(AK09916_ST1)))
                 pause(100)
-                this.dumpMagWordsBE("AK09916_HXL...", AK09916_HXL, 6) // sensor data
+                for (let i=0;i<6;i++){
+                    serial.writeLine("AK09916_DATA = " + toHex(this.readMagByte(AK09916_HXL+i)))
+                    pause(100)
+                }
+                this.dumpMagWordsBE("AK09916_VALS", AK09916_HXL, 6) // sensor data
                 pause(100)
                 serial.writeLine("AK09916_ST2 = " + toHex(this.readMagByte(AK09916_ST2)))
                 pause(100)

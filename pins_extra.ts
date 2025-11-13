@@ -47,10 +47,26 @@ function i2cRegisterFlags(address: number, register: number, unsetMask: number, 
 }
 
 /** utility */
-function toHex(byte:number){
+function toHex(byte:number): string{
     const hex = ["0","1","2","3","4","5","6","7","8","9","A","B","C","D","E","F"]
     // HACK: insert a short delay here to help prevent serial output overruns elsewhere...
     //basic.pause(10)
-    return '0x'+hex[byte>>4]+hex[byte&0xf]
+    return '0x'+hexit(byte>>4) + hexit(byte&0xf)
+}
+
+function dumpBuffer(bytes:Buffer, from:number, count:number):string {
+    let output:string
+    for(let i=0; i<count; i++){
+        let byte = bytes.getNumber(NumberFormat.Int8LE, from + i)
+        output += hexit(byte >> 4)
+        output += hexit(byte & 0xf)
+    }
+    return output
+}
+
+/** convert nibble to hex digit character */
+function hexit(nibble:number):string {
+    const hex = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F"]
+    return (hex[nibble & 0xf])
 }
 //************************************************************************** */

@@ -8,11 +8,11 @@ Show.see(mode, "STARTING UP...")
 pause(1000)
 
 // connect to the ICM and separately to the MAG
-// let sensor = new ICM20948(ICM20948_I2C_ADDR, true) address Mag directly
-let sensor = new ICM20948(ICM20948_I2C_ADDR, false) // address Mag indirectly
+let sensor = new ICM20948(ICM20948_I2C_ADDR, true) // address Mag directly
+// let sensor = new ICM20948(ICM20948_I2C_ADDR, false) // address Mag indirectly
 pause(1000)
 
-if ((sensor.status & STATUS_MAG_FOUND) > 0) {
+if (sensor.status == 192) {
     basic.showIcon(IconNames.Happy)
     pause(1000)
 }
@@ -54,7 +54,7 @@ input.onButtonPressed(Button.AB, function() {
 // Button A cycles to next testsOff
 input.onButtonPressed(Button.A, function () {
     active = false
-    test = (test+1) % 3
+    test = (test+1) % 4
     basic.showString(testsOff[test])
     pause(1000)
     basic.clearScreen()
@@ -103,13 +103,14 @@ while(true) {
                     datalogger.createCV("GZ", gyroData[2]))
                 break
             case Tests.MAG:
-                magData = sensor.senseMag()
-                datalogger.log(
-                    datalogger.createCV("MX", magData[0]),
-                    datalogger.createCV("MY", magData[1]),
-                    datalogger.createCV("MZ", magData[2]))
+                let magreg = pins.createBuffer(32)
+                for (let i=0; i<32; i++){
+                    magreg[i] = i2cReadByte(sensor.mag, i)
+                }
+                //let magReg = i2cReadBuffer(sensor.mag, 0, 32)
+                serial.writeLine('mag[00]...' + dumpBuffer(magreg, 0, 16))
+                serial.writeLine('mag[16]...' + dumpBuffer(magreg, 16, 16))
                 break
-                
         }
         basic.clearScreen()
         pause(200)
