@@ -69,6 +69,20 @@ input.onButtonPressed(Button.B, function () {
     }
 })
 
+serial.writeLine('trial dump of bank 0...')
+sensor.useBank(0)
+let icmreg = pins.createBuffer(32)
+for (let i=0; i<32; i++) {
+    icmreg[i] = i2cReadByte(sensor.icm, i)
+    pause(500)
+    serial.writeLine(toHex(icmreg[i]))
+}
+
+
+//let magReg = i2cReadBuffer(sensor.mag, 0, 32)
+serial.writeLine('icm[00..] = [' + dumpBufferAsHex(icmreg, 0, 16) + ']')
+serial.writeLine('icm[16..] = [' + dumpBufferAsHex(icmreg, 16, 16) + ']')
+
 
 while(true) {
     if (active) {
@@ -106,10 +120,11 @@ while(true) {
                 let magreg = pins.createBuffer(32)
                 for (let i=0; i<32; i++){
                     magreg[i] = i2cReadByte(sensor.mag, i)
+                    serial.writeLine(toHex(magreg[i]))
                 }
                 //let magReg = i2cReadBuffer(sensor.mag, 0, 32)
-                serial.writeLine('mag[00]...' + dumpBuffer(magreg, 0, 16))
-                serial.writeLine('mag[16]...' + dumpBuffer(magreg, 16, 16))
+                serial.writeLine('icm[00..] = [' + dumpBufferAsHex(magreg, 0, 16) + ']')
+                serial.writeLine('icm[16..] = [' + dumpBufferAsHex(magreg, 16, 16) + ']')
                 break
         }
         basic.clearScreen()

@@ -54,12 +54,13 @@ function toHex(byte:number): string{
     return '0x'+hexit(byte>>4) + hexit(byte&0xf)
 }
 
-function dumpBuffer(bytes:Buffer, from:number, count:number):string {
+function dumpBufferAsHex(bytes:Buffer, from:number, count:number):string {
     let output:string
     for(let i=0; i<count; i++){
         let byte = bytes.getNumber(NumberFormat.Int8LE, from + i)
         output += hexit(byte >> 4)
         output += hexit(byte & 0xf)
+        if ((i%4) == 3) output += ' '
     }
     return output
 }

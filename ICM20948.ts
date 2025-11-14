@@ -124,6 +124,7 @@ const   AK09916_CNTL2_MODE_CONT3_50Hz = 0x06 // 50 Hz
 const   AK09916_CNTL2_MODE_CONT4_100Hz = 0x08 // 100 Hz
 const   AK09916_CNTL2_MODE_TEST = 0b00010000
 const AK09916_CNTL3 = 0x32
+const   AK09916_CNTL3_SOFT_RESET = 0x01
 
 // high-level flags in ICM20948.status
 const STATUS_ICM_FOUND = 0b10000000
@@ -314,7 +315,7 @@ class ICM20948 {
         data = self.mag_read_bytes(AK09916_HXL, 6)
 
         */
-    this.magWriteByte(AK09916_CNTL2, 0x01)  // Trigger a single measurement
+        //this.writeMagByte(AK09916_CNTL2, 0x01)  // Trigger a single measurement
     
     
     // Note that magnetometer is either connected directly, or each read and write
@@ -331,7 +332,7 @@ class ICM20948 {
             }
             control.waitMicros(50)
             // is the magnetometer status data-ready bit, DRDY, set yet?
-            ready = (this.readMagByte(AK09916_ST2) & AK09916_ST1_DRDY) > 0
+            ready = (this.readMagByte(AK09916_ST1) & AK09916_ST1_DRDY) > 0
         }
 
         if (ready) {
@@ -530,12 +531,13 @@ class ICM20948 {
 
     /** Reset the magnetometer */
     magInitialise() {
-        this.magWriteByte(AK09916_CNTL3, 0x01)
-        while (this.magReadByte(AK09916_CNTL3) == 0x01) {
+        this.writeMagByte(AK09916_CNTL3, AK09916_CNTL3_SOFT_RESET)
+        // SOFT_RESET bit clears when completed..
+        while ((this.readMagByte(AK09916_CNTL3) | AK09916_CNTL3_SOFT_RESET) > 0) {
             control.waitMicros(100)
         }
         // set operating mode to continuous readings
-        this.magWriteByte(AK09916_CNTL2, AK09916_CNTL2_MODE_CONT4_100Hz)
+        this.writeMagByte(AK09916_CNTL2, AK09916_CNTL2_MODE_CONT4_100Hz)
         
     }
 
@@ -826,7 +828,7 @@ class ICM20948 {
                     serial.writeLine("AK09916_DATA = " + toHex(this.readMagByte(AK09916_HXL+i)))
                     pause(100)
                 }
-                this.dumpMagWordsBE("AK09916_VALS", AK09916_HXL, 6) // sensor data
+                this.dumpMagWordsLE("AK09916_VALS", AK09916_HXL, 6) // sensor data
                 pause(100)
                 serial.writeLine("AK09916_ST2 = " + toHex(this.readMagByte(AK09916_ST2)))
                 pause(100)
@@ -857,7 +859,7 @@ class ICM20948 {
     }
 
     /** construct and dump some 2-byte little-endian magnetometer words */
-    dumpMagWordsBE(fromName:string, fromReg:number, length:number){
+    dumpMagWordsLE(fromName:string, fromReg:number, length:number){
         for (let i = 0; i < length; i += 2) {
             let lo = toHex(this.readMagByte(fromReg + i))
             let hi = toHex(this.readMagByte(fromReg + i + 1))
