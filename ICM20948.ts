@@ -146,12 +146,24 @@ class ICM20948 {
         this.mag = AK09916_I2C_ADDR // I2C address of AK09916 sub-chip
         this.status = 0 // (awaiting initialisation)
 
-
         // now wake it up and prepare for use
         this.initialise()
         
         // *** Am I really there?
         this.checkForICM20948()
+
+        if (magDirect) {
+            this.useMagDirect() // addressing magnetometer directly on the I2C bus
+        } else {
+            this.useMagSlave() // addressing magnetometer indirectly via the ICM
+        }
+
+        // reset magnetometer
+        this.magInitialise()
+
+        // is AK09916 sub-chip listening?
+        this.checkForAK09916()
+
 
         /* Set up the accelerometer and gyro
         this.setAccelSampleRate(125)
@@ -171,18 +183,6 @@ class ICM20948 {
         this.setGyroSampleRate()
         this.setGyroSensitivity()
         this.setGyroSmoothing()
-
-        if (magDirect) {
-            this.useMagDirect() // address magnetometer directly on the I2C bus
-        } else {
-            this.useMagSlave() // address magnetometer indirectly via the ICM
-        }
-
-        // reset magnetometer
-        this.magInitialise()
-
-        // is AK09916 sub-chip listening?
-        this.checkForAK09916()
 
         // ? clear interrupts ??? why 
         i2cWriteByte(this.icm, ICM20948_INT_PIN_CFG, 0x30)
@@ -205,7 +205,7 @@ class ICM20948 {
             id = i2cReadByte(this.mag, AK09916_WIA2)
         } else {
             // we need a slave read for this register
-            id = this.magReadByte(AK09916_WIA2)
+            id = this.magSlaveReadByte(AK09916_WIA2)
         }
         if (id == AK09916_CHIP_ID) {
             this.status |= STATUS_MAG_FOUND
@@ -357,11 +357,6 @@ class ICM20948 {
         return vals
     }
 
-    /** Is the magnetometer status data-ready bit, DRDY, set?
-    magIsReady():boolean {
-        return ((this.readMagByte(AK09916_ST1) & AK09916_ST1_DRDY) > 0)
-    }
- */
     setAccelSampleRate(rate = 125) {
         /* Set the accelerometer sample rate in Hz. */
         // 125Hz - 1.125 kHz / (1 + rate)
@@ -471,7 +466,7 @@ class ICM20948 {
         // Before trying anything, reset the chip:
         this.useBank(0)
         // set the ICM_PWR_MGMT_1_RESET bit in ICM_PWR_MGMT_1 register
-        i2cRegisterFlags(this.icm, ICM20948_PWR_MGMT_1, 0, ICM20948_PWR_MGMT_1_RESET)
+        i2cAdjustFlags(this.icm, ICM20948_PWR_MGMT_1, 0, ICM20948_PWR_MGMT_1_RESET)
         pause(100)
         // Set Clock Auto to wake from possible Sleep mode
         i2cWriteByte(this.icm, ICM20948_PWR_MGMT_1, ICM20948_PWR_MGMT_1_CLOCK_AUTO)
@@ -510,10 +505,11 @@ class ICM20948 {
     useMagDirect() {
         this.useBank(0)
         // in the USER_CTRL register, clear the I2C_MST_EN bit
-        i2cRegisterFlags(this.icm, ICM20948_USER_CTRL, ICM20948_USER_CTRL_I2C_MST_EN, 0)
+        i2cAdjustFlags(this.icm, ICM20948_USER_CTRL, ICM20948_USER_CTRL_I2C_MST_EN, 0)
         // in the INT_PIN_CFG register, set the BYPASS_EN bit
-        i2cRegisterFlags(this.icm, ICM20948_INT_PIN_CFG, 0, ICM20948_INT_PIN_CFG_BYPASS_EN)   
+        i2cAdjustFlags(this.icm, ICM20948_INT_PIN_CFG, 0, ICM20948_INT_PIN_CFG_BYPASS_EN)
         this.magIsDirect = true
+
         this.magInitialise()
     }
 
@@ -522,49 +518,62 @@ class ICM20948 {
     useMagSlave() {
         this.useBank(0)
         // in the USER_CTRL register, set the I2C_MST_EN bit
-        i2cRegisterFlags(this.icm, ICM20948_USER_CTRL, 0, ICM20948_USER_CTRL_I2C_MST_EN)
+        i2cAdjustFlags(this.icm, ICM20948_USER_CTRL, 0, ICM20948_USER_CTRL_I2C_MST_EN)
         // in the INT_PIN_CFG register, clear the BYPASS_EN bit
-        i2cRegisterFlags(this.icm, ICM20948_INT_PIN_CFG, ICM20948_INT_PIN_CFG_BYPASS_EN, 0)
+        i2cAdjustFlags(this.icm, ICM20948_INT_PIN_CFG, ICM20948_INT_PIN_CFG_BYPASS_EN, 0)
         this.magIsDirect = false
+
         this.magInitialise()
     }
 
-    /** Reset the magnetometer */
+    /** Reset the magnetometer (directly or indirectly) */
     magInitialise() {
         this.writeMagByte(AK09916_CNTL3, AK09916_CNTL3_SOFT_RESET)
+
         // SOFT_RESET bit clears when completed..
         while ((this.readMagByte(AK09916_CNTL3) | AK09916_CNTL3_SOFT_RESET) > 0) {
-            control.waitMicros(100)
+            pause(100)
+            serial.writeString('.')
         }
-        // set operating mode to continuous readings
+        // set operating mode to continuous readings at 100hz
         this.writeMagByte(AK09916_CNTL2, AK09916_CNTL2_MODE_CONT4_100Hz)
-        
     }
 
 
     // Wrappers to access magnetometer in either mode
-    writeMagByte(reg:number, value:number) {
-        if(this.magIsDirect) {
-            i2cWriteByte(this.mag, reg, value) 
-        } else { 
-            this.magWriteByte(reg, value)
-        }
-    }
-
     readMagByte(reg:number):number {
         return this.magIsDirect ? i2cReadByte(this.mag, reg) 
-                                : this.magReadByte(reg)
+                                : this.magSlaveReadByte(reg)
     }
 
     readMagWordsLE(reg:number, length = 1):number[] {
         return this.magIsDirect ? i2cReadWordsLE(this.mag, reg, length)
-                                : this.magReadWordsLE(reg, length)
+                                : this.magSlaveReadWordsLE(reg, length)
     }
-    
+
+    writeMagByte(reg: number, value: number) {
+        if (this.magIsDirect) {
+            i2cWriteByte(this.mag, reg, value) // directly
+        } else {
+            this.magSlaveWriteByte(reg, value) //    indirectly
+        }
+    }
+
+    adjustMagFlags(reg: number, unsetMask: number, setMask: number) {
+        if (this.magIsDirect) {
+            i2cAdjustFlags(this.mag, reg, unsetMask, setMask)
+        } else { // use indirect Slave transfers...
+            let setting = this.magSlaveReadByte(reg)
+            setting &= (0xff ^ unsetMask)
+            setting |= setMask
+            this.magSlaveWriteByte(reg, setting)
+            pause(10)
+        }
+    }
     // ************** Magnetometer I/O when using Master-Slave mode ***************
 
     /**  Write a byte indirectly into a magnetometer register */
-    magWriteByte(reg:number, value:number) {
+    magSlaveWriteByte(reg:number, value:number) {
         // Set up a write access using Slave 0 register-set in bank 3
         this.useBank(3)
         i2cWriteByte(this.icm, ICM20948_I2C_SLV0_ADDR, AK09916_I2C_ADDR) // point at AK09916
@@ -574,8 +583,8 @@ class ICM20948 {
         this.magSlaveGo() // initiate indirect transfer
     }
 
-    /** Read a byte from the slave magnetometer */
-    magReadByte(reg:number):number {
+    /** Read a byte indirectly from the slave magnetometer */
+    magSlaveReadByte(reg:number):number {
         // Set up a read access using Slave 0 register-set in bank 3
         this.useBank(3)
         i2cWriteByte(this.icm, ICM20948_I2C_SLV0_ADDR, AK09916_I2C_ADDR | ICM20948_I2C_SLV_ADDR_RNW)
@@ -587,7 +596,7 @@ class ICM20948 {
     }
 
     /** Read little-endian words from the magnetometer, connected as slave. */
-    magReadWordsLE(reg:number, length:number):number[] {
+    magSlaveReadWordsLE(reg:number, length:number):number[] {
         /*set up slave0 for reading into the bank 0 data registers
         def _setup_mag_readout(self) -> None:
         self._bank = 3
@@ -624,26 +633,14 @@ class ICM20948 {
     /** initiate Slave transfer by setting ICM20948_USER_CTRL_I2C_MST_EN for a while */
     magSlaveGo() {
         this.useBank(0)
-        i2cRegisterFlags(this.icm, ICM20948_USER_CTRL, 0, ICM20948_USER_CTRL_I2C_MST_EN)
+        i2cAdjustFlags(this.icm, ICM20948_USER_CTRL, 0, ICM20948_USER_CTRL_I2C_MST_EN)
         // eventually, wait for slave to report data is ready?
-        control.waitMicros(500) // =5ms
+        pause(5)
         // now unset Master Enable
-        i2cRegisterFlags(this.icm, ICM20948_USER_CTRL, ICM20948_USER_CTRL_I2C_MST_EN, 0)
+        i2cAdjustFlags(this.icm, ICM20948_USER_CTRL, ICM20948_USER_CTRL_I2C_MST_EN, 0)
     }
 
 
-    /** Modify flags in a register in the magnetometer */
-    magRegisterFlags(reg:number, unsetMask:number, setMask:number) {
-        if (this.magIsDirect) {
-            i2cRegisterFlags(this.mag, reg, unsetMask, setMask)
-        } else { // use indirect Slave transfers...
-            let setting = this.magReadByte(reg)
-            setting &= (0xff ^ unsetMask)
-            setting |= setMask
-            this.magWriteByte(reg, setting)
-            control.waitMicros(10)
-        }
-    }
 
 
     dumpRegisters(bank: number) {

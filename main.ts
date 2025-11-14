@@ -11,17 +11,40 @@ pause(1000)
 let sensor = new ICM20948(ICM20948_I2C_ADDR, true) // address Mag directly
 // let sensor = new ICM20948(ICM20948_I2C_ADDR, false) // address Mag indirectly
 pause(1000)
+basic.showNumber(sensor.status)
+pause(1000)
 
 if (sensor.status == 192) {
     basic.showIcon(IconNames.Happy)
     pause(1000)
+    basic.clearScreen()
 }
 
+serial.writeLine('initial dump of mag...')
+sensor.dumpMagWordsLE('MAG',0,16)
+
+
+serial.writeLine('iniial dump of bank 0...')
+sensor.useBank(0)
+let icmreg = pins.createBuffer(32)
+for (let i=0; i<32; i++) {
+    icmreg[i] = i2cReadByte(sensor.icm, i)
+    pause(500)
+    serial.writeLine(toHex(icmreg[i]))
+}
+
+
+//let magReg = i2cReadBuffer(sensor.mag, 0, 32)
+//serial.writeLine('icm[00..] = [' + dumpBufferAsHex(icmreg, 0, 16) + ']')
+//serial.writeLine('icm[16..] = [' + dumpBufferAsHex(icmreg, 16, 16) + ']')
+
+
+
 // try a simple multi-byte read 
-let rawT = sensor.readTemperature()
+//let rawT = sensor.readTemperature()
 //Show.see(mode,"rawT:" + rawT)
-let t = Math.floor(rawT*100)/100
-Show.see(mode,"temp:" + t)
+//let t = Math.floor(rawT*100)/100
+//Show.see(mode,"temp:" + t)
 
 enum Tests {
     SENSE,
@@ -42,7 +65,6 @@ basic.showString(testsOff[test])
 pause(1000)
 basic.clearScreen()
 let active = false
-sensor.dumpMagWordsBE('MAG',0,16)
 
 input.onButtonPressed(Button.AB, function() {
     // clear down the log-file
@@ -68,22 +90,6 @@ input.onButtonPressed(Button.B, function () {
         active = true
     }
 })
-
-serial.writeLine('trial dump of bank 0...')
-sensor.useBank(0)
-let icmreg = pins.createBuffer(32)
-for (let i=0; i<32; i++) {
-    icmreg[i] = i2cReadByte(sensor.icm, i)
-    pause(500)
-    serial.writeLine(toHex(icmreg[i]))
-}
-
-
-//let magReg = i2cReadBuffer(sensor.mag, 0, 32)
-serial.writeLine('icm[00..] = [' + dumpBufferAsHex(icmreg, 0, 16) + ']')
-serial.writeLine('icm[16..] = [' + dumpBufferAsHex(icmreg, 16, 16) + ']')
-
-
 while(true) {
     if (active) {
         switch (test) {

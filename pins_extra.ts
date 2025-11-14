@@ -38,7 +38,7 @@ function i2cReadWordsLE(address:number, register:number, length:number): number[
 }
 
 /** Modify flags in a register on this I2C address */
-function i2cRegisterFlags(address: number, register: number, unsetMask: number, setMask: number) {
+function i2cAdjustFlags(address: number, register: number, unsetMask: number, setMask: number) {
     let setting = i2cReadByte(address, register)
     setting &= (0xff ^ unsetMask)
     setting |= setMask
