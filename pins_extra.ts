@@ -26,14 +26,14 @@ function i2cReadBuffer(address: number, register: number, length = 1):Buffer {
 /** Read an array of big-endian words from this I2C address, starting from given register. */
 function i2cReadWordsBE(address:number, register:number, length: number): number[] {
     let buffer = i2cReadBuffer(address, register, 2*length)
-    let vals = buffer.toArray(NumberFormat.UInt16BE)
+    let vals = buffer.toArray(NumberFormat.Int16BE)
     return vals
 }
 
 /** Read an array of little-endian words from this I2C address, starting from given register. */
 function i2cReadWordsLE(address:number, register:number, length:number): number[] {
     let buffer = i2cReadBuffer(address, register, 2*length)
-    let vals = buffer.toArray(NumberFormat.UInt16LE)
+    let vals = buffer.toArray(NumberFormat.Int16LE)
     return vals
 }
 
