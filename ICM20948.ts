@@ -139,7 +139,7 @@ class ICM20948 {
     registerBank: number // currently-selected register bank
     status: number  // flags indicating current status of the chip
 
-    /** create an ICM20948 instance */
+/** create an ICM20948 instance */
     constructor(icmAddress: number, magDirect:boolean) {
         this.registerBank = -1 // currently-selected register-bank
         this.icm = icmAddress // I2C master address of ICM20948 chip
@@ -320,7 +320,7 @@ class ICM20948 {
     
     // Note that magnetometer is either connected directly, or each read and write
     // must be negotiated as an indirect Master-Slave conversation!
-        this.dumpRegisters(4)
+        // this.dumpRegisters(4)
         // The magnetometer should be in continuous measurement mode,
         // so we just need to repeatedly poll its Data Ready flag until set...
         let began = control.millis()
@@ -353,7 +353,7 @@ class ICM20948 {
                 vals[i] *= 0.15
             }
         }
-        this.dumpRegisters(4)
+        //this.dumpRegisters(4)
         return vals
     }
 
@@ -529,11 +529,9 @@ class ICM20948 {
     /** Reset the magnetometer (directly or indirectly) */
     magInitialise() {
         this.writeMagByte(AK09916_CNTL3, AK09916_CNTL3_SOFT_RESET)
-
         // SOFT_RESET bit clears when completed..
-        while ((this.readMagByte(AK09916_CNTL3) | AK09916_CNTL3_SOFT_RESET) > 0) {
+        while ((this.readMagByte(AK09916_CNTL3) & AK09916_CNTL3_SOFT_RESET) > 0) {
             pause(100)
-            serial.writeString('.')
         }
         // set operating mode to continuous readings at 100hz
         this.writeMagByte(AK09916_CNTL2, AK09916_CNTL2_MODE_CONT4_100Hz)

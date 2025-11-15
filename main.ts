@@ -20,11 +20,11 @@ if (sensor.status == 192) {
     basic.clearScreen()
 }
 
-serial.writeLine('initial dump of mag...')
-sensor.dumpMagWordsLE('MAG',0,16)
+//serial.writeLine('initial dump of mag...')
+//sensor.dumpMagWordsLE('MAG',0,16)
 
 
-serial.writeLine('iniial dump of bank 0...')
+/*serial.writeLine('iniial dump of bank 0...')
 sensor.useBank(0)
 let icmreg = pins.createBuffer(32)
 for (let i=0; i<32; i++) {
@@ -32,7 +32,7 @@ for (let i=0; i<32; i++) {
     pause(500)
     serial.writeLine(toHex(icmreg[i]))
 }
-
+*/
 
 //let magReg = i2cReadBuffer(sensor.mag, 0, 32)
 //serial.writeLine('icm[00..] = [' + dumpBufferAsHex(icmreg, 0, 16) + ']')
