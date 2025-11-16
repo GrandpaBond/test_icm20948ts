@@ -13,7 +13,9 @@
         "pins_extra.ts",
         "ICM20948.ts",
         "show.ts",
-        "dmp_img.ts"
+        "dmp.ts",
+        "dmpConsts.ts",
+        "dmpCode.ts"
     ],
     "testFiles": [
         "test.ts"
