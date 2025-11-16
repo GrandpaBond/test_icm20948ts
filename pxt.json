@@ -12,7 +12,8 @@
         "README.md",
         "pins_extra.ts",
         "ICM20948.ts",
-        "show.ts"
+        "show.ts",
+        "dmp_img.ts"
     ],
     "testFiles": [
         "test.ts"
