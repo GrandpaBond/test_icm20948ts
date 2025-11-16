@@ -5,8 +5,14 @@
 //namespace ICM {
 const ICM20948_I2C_ADDR = 0x68
 const ICM20948_BANK_SEL = 0x7f
+/* 
+Memory banks are a standard 256 bytes long.
+Register-addresses are two bytes (Bank:Offset).
+The constants below are just the Offsets, so before access the Bank must be 
+selected (and is then remembered).
+*/
 
-// Bank 0
+// Bank 0 
 const ICM20948_WHO_AM_I = 0x00 // ID register
 const ICM20948_CHIP_ID = 0xEA // ID value expected
 const ICM20948_USER_CTRL = 0x03
