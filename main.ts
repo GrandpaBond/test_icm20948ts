@@ -20,6 +20,10 @@ if (sensor.status == 192) {
     basic.clearScreen()
 }
 
+// *** try loading the DMP firmware into the chip
+dmpLoadFirmware(sensor)
+
+
 //serial.writeLine('initial dump of mag...')
 //sensor.dumpMagWordsLE('MAG',0,16)
 
@@ -90,6 +94,7 @@ input.onButtonPressed(Button.B, function () {
         active = true
     }
 })
+
 while(true) {
     if (active) {
         switch (test) {

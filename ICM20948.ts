@@ -223,14 +223,6 @@ class ICM20948 {
         return this.status
     }
 
-    loadFirmware() {
-        let img: Buffer
-        for (let i = 0; i < dmpCode.length; i++) {
-            img.setUint8(i, dmpCode[i])
-        }
-
-    }
-
     /** read and return Accelerometer components */
     senseAccel() {
         let rdy = 0

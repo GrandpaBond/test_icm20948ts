@@ -15,7 +15,7 @@
         "show.ts",
         "dmp.ts",
         "dmpConsts.ts",
-        "dmpCode.ts"
+        "dmpHex.ts"
     ],
     "testFiles": [
         "test.ts"
