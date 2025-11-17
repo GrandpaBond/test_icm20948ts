@@ -23,6 +23,12 @@ if (sensor.status == 192) {
 // *** try loading the DMP firmware into the chip
 dmpLoadFirmware(sensor)
 
+// grab bank 0 and dump it
+dumpBank(sensor, 0)
+
+// *** read it back to confirm
+dmpCheckFirmware(sensor)
+
 
 //serial.writeLine('initial dump of mag...')
 //sensor.dumpMagWordsLE('MAG',0,16)

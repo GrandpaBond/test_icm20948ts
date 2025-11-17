@@ -16,7 +16,7 @@ function i2cReadByte(device:number, register:number) {
 }
 
 /** Read a Buffer (array of bytes) from this I2C device, starting from given register. */
-function i2cReadBuffer(device:number, register:number, length = 1):Buffer {
+function i2cReadBuffer(device:number, register:number, length:number):Buffer {
     let buffer = pins.createBuffer(length)
     pins.i2cWriteNumber(device, register, NumberFormat.UInt8LE)
     buffer = pins.i2cReadBuffer(device, length, true)
@@ -52,7 +52,22 @@ function i2cAdjustFlags(device: number, register: number, unsetMask: number, set
     control.waitMicros(10)
 }
 
-/** utility */
+/****************** utility **********************/
+
+function dumpBank(sensor: ICM20948, bank: number) {
+    sensor.useBank(bank)
+    let addr = bank*256
+    for (let ro = 0; ro < 16; ro++) {
+        let offset = ro*16
+        let hexRow = i2cReadBuffer(sensor.icm, offset, 256)
+        pause(20)
+        let output = offset.toString() + dumpBufferAsHex(hexRow,0,16)
+        
+        serial.writeLine(offset + ': 0x' + hexBank.slice(offset, offset + 16))
+    }
+
+}
+
 function toHex(byte:number): string{
     const hex = ["0","1","2","3","4","5","6","7","8","9","A","B","C","D","E","F"]
     // HACK: insert a short delay here to help prevent serial output overruns elsewhere...
