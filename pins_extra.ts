@@ -57,23 +57,29 @@ function i2cAdjustFlags(device: number, register: number, unsetMask: number, set
 function dumpBank(sensor: ICM20948, bank: number) {
     sensor.useBank(bank)
     let addr = bank*256
-    for (let ro = 0; ro < 16; ro++) {
+    for (let ro = 0; ro < 16; ro++) { // for each row of 16 bytes
         let offset = ro*16
-        let hexRow = i2cReadBuffer(sensor.icm, offset, 256)
+        let hexRow = i2cReadBuffer(sensor.icm, offset, 16).toHex()  // 32 hexits
         pause(20)
-        let output = offset.toString() + dumpBufferAsHex(hexRow,0,16)
-        
-        serial.writeLine(offset + ': 0x' + hexBank.slice(offset, offset + 16))
+        let output ='0x'+hexWord(offset) + ':'
+        for (let n=0; n<32; n+=8) { // 8 hexits at a time
+            output += ' 0x'+ hexRow.slice(offset+n, offset+n+8)
+        }
+        serial.writeLine(output)
     }
-
 }
 
-function toHex(byte:number): string{
-    const hex = ["0","1","2","3","4","5","6","7","8","9","A","B","C","D","E","F"]
-    // HACK: insert a short delay here to help prevent serial output overruns elsewhere...
-    //basic.pause(10)
-    return '0x'+hexit(byte>>4) + hexit(byte&0xf)
+function toHex(byte: number): string {
+    return '0x' + hexit(byte >> 4) + hexit(byte & 0xf)
 }
+
+/** format 16-bit value as "0xabcd" */
+function hexWord(word: number): string {
+    let hi = word >> 8
+    let lo = word & 0xff
+    return '0x' + hexit(hi >> 4) + hexit(hi & 0xf) + hexit(lo >> 4) + hexit(lo & 0xf)
+}
+
 
 function dumpBufferAsHex(bytes:Buffer, from:number, count:number):string {
     let output:string
