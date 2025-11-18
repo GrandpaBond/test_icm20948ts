@@ -19,7 +19,7 @@ function i2cReadByte(device:number, register:number) {
 function i2cReadBuffer(device:number, register:number, length:number):Buffer {
     let buffer = pins.createBuffer(length)
     pins.i2cWriteNumber(device, register, NumberFormat.UInt8LE)
-    buffer = pins.i2cReadBuffer(device, length, true)
+    buffer = pins.i2cReadBuffer(device, length, false)
     return buffer
 }
 
@@ -52,11 +52,11 @@ function i2cAdjustFlags(device: number, register: number, unsetMask: number, set
     control.waitMicros(10)
 }
 
-/****************** utility **********************/
+/****************** utilities **********************/
 
 function dumpBank(sensor: ICM20948, bank: number) {
     sensor.useBank(bank)
-    let addr = bank*256
+    let regAddr = bank*256
     for (let ro = 0; ro < 16; ro++) { // for each row of 16 bytes
         let offset = ro*16
         let hexRow = i2cReadBuffer(sensor.icm, offset, 16).toHex()  // 32 hexits

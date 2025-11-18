@@ -1,6 +1,6 @@
 
 serial.redirectToUSB()
-let mode = ShowMode.LOGGED
+let mode = ShowMode.BASIC
 datalogger.mirrorToSerial(true) // monitor Log output
 
 basic.showString("Hello!")
@@ -11,6 +11,27 @@ pause(1000)
 let sensor = new ICM20948(ICM20948_I2C_ADDR, true) // address Mag directly
 // let sensor = new ICM20948(ICM20948_I2C_ADDR, false) // address Mag indirectly
 pause(1000)
+
+// try a simple multi-byte read 
+let rawT = sensor.readTemperature()
+Show.see(mode,"rawT:" + rawT)
+let t = Math.floor(rawT*100)/100
+Show.see(mode,"temp:" + t)
+
+pause(1000)
+
+
+sensor.useBank(0)
+for (let reg=0; reg<16; reg++) {
+    let bite = i2cReadByte(sensor.icm, reg)
+    basic.showNumber(bite)
+}
+let dump = i2cReadBuffer(sensor.icm, 0, 16).toHex()
+//serial.writeLine('test:'+dump)
+basic.showString('test:' + dump)
+// grab bank 0 and dump it
+dumpBank(sensor, 0)
+
 basic.showNumber(sensor.status)
 pause(1000)
 
@@ -48,13 +69,6 @@ for (let i=0; i<32; i++) {
 //serial.writeLine('icm[00..] = [' + dumpBufferAsHex(icmreg, 0, 16) + ']')
 //serial.writeLine('icm[16..] = [' + dumpBufferAsHex(icmreg, 16, 16) + ']')
 
-
-
-// try a simple multi-byte read 
-//let rawT = sensor.readTemperature()
-//Show.see(mode,"rawT:" + rawT)
-//let t = Math.floor(rawT*100)/100
-//Show.see(mode,"temp:" + t)
 
 enum Tests {
     SENSE,

@@ -468,7 +468,6 @@ class ICM20948 {
         */
 
 
-        this.useBank(0)
         // Before trying anything, reset the chip:
         this.useBank(0)
         // set the ICM_PWR_MGMT_1_RESET bit in ICM_PWR_MGMT_1 register
