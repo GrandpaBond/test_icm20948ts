@@ -56,7 +56,7 @@ function i2cAdjustFlags(device: number, register: number, unsetMask: number, set
 
 function dumpBank(sensor: ICM20948, bank: number) {
     sensor.useBank(bank)
-    let regAddr = bank*256
+    //let regAddr = bank*256
     for (let ro = 0; ro < 16; ro++) { // for each row of 16 bytes
         let offset = ro*16
         let hexRow = i2cReadBuffer(sensor.icm, offset, 16).toHex()  // 32 hexits
@@ -69,7 +69,7 @@ function dumpBank(sensor: ICM20948, bank: number) {
     }
 }
 
-function toHex(byte: number): string {
+function hexByte(byte: number): string {
     return '0x' + hexit(byte >> 4) + hexit(byte & 0xf)
 }
 

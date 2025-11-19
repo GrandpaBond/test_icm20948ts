@@ -13,8 +13,8 @@ function dmpLoadFirmware(sensor:ICM20948) {
     let percent: number
 
     while (hexOffset <= allHex) {
-        percent = Math.round(100 * hexOffset / allHex)
-        let size = 256 - (dmpAddr & 0xff) // (generally a full 256)
+        percent = Math.round(100 * hexOffset / allHex)  
+        let size = 256 - (dmpAddr & 0xff) // (generally, a full 256-byte bank)
         sensor.useBank(dmpAddr >> 8)
         i2cWriteBuffer(sensor.icm, (dmpAddr & 0xff), dmpHex.slice(hexOffset, size))
         pause(200)
@@ -23,7 +23,7 @@ function dmpLoadFirmware(sensor:ICM20948) {
         dmpAddr += size
     }
 
-    Show.see(mode,"DMP Firmware Upload Successful !")
+    Show.see(mode,"DMP Firmware Upload Successful (?)")
 
 }
 
@@ -33,20 +33,23 @@ function dmpCheckFirmware(sensor: ICM20948) {
     let dmpAddr = DMP_START_ADDRESS + DMP_LOAD_START
     let hexOffset = 0
     let percent:number
-    let good:boolean
+    let good = true
 
-    while (hexOffset <= allHex) {
+    while (good && (hexOffset <= allHex)) {
         percent = Math.round(100 * hexOffset / allHex)
-        let size = 256 - (dmpAddr & 0xff) // (generally a full 256)
+        let size = 256 - (dmpAddr & 0xff) // (generally, a full 256-byte bank)
 
-        let here  = Buffer.create(size)
-        here = dmpHex.slice(hexOffset, size)
+        let here  = Buffer.create(size) // what this bank should contain
+        here = dmpHex.slice(hexOffset, size) 
+
         serial.writeLine(here.toHex())
         
         let bank = dmpAddr >> 8
         sensor.useBank(bank)
+        // see what this bank actually contains
         let there = i2cReadBuffer(sensor.icm, (dmpAddr & 0xff), size)
         pause(200)
+        
         serial.writeLine(there.toHex())
 
         good = there.equals(here)
@@ -54,7 +57,6 @@ function dmpCheckFirmware(sensor: ICM20948) {
             serial.writeLine('checked ' + percent + '%')
         } else {
             serial.writeLine('mismatch on bank ' + (dmpAddr >> 8))
-            break
         }
         hexOffset += size
         dmpAddr += size

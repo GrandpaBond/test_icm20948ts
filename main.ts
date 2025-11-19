@@ -3,7 +3,7 @@ serial.redirectToUSB()
 let mode = ShowMode.BASIC
 datalogger.mirrorToSerial(true) // monitor Log output
 
-basic.showString("Hello!")
+basic.showString("Hello!",50)
 Show.see(mode, "STARTING UP...")
 pause(1000)
 
@@ -14,26 +14,29 @@ pause(1000)
 
 // try a simple multi-byte read 
 let rawT = sensor.readTemperature()
-Show.see(mode,"rawT:" + rawT)
+//Show.see(mode,"rawT:" + rawT)
 let t = Math.floor(rawT*100)/100
 Show.see(mode,"temp:" + t)
 
 pause(1000)
 
-
+// now try dumping bank first 65 bytes of bank 0 
+// up to end of mirrored mag-data (only when in indirect Master-Slave mode)
 sensor.useBank(0)
-for (let reg=0; reg<16; reg++) {
+/*
+for (let reg=0; reg<65; reg++) {
     let bite = i2cReadByte(sensor.icm, reg)
     basic.showNumber(bite)
-}
-let dump = i2cReadBuffer(sensor.icm, 0, 16).toHex()
-//serial.writeLine('test:'+dump)
-basic.showString('test:' + dump)
-// grab bank 0 and dump it
+} */
+
+let dump = i2cReadBuffer(sensor.icm, 0, 65).toHex()
+serial.writeLine('test:'+dump)
+//basic.showString('test:' + dump)
+serial.writeLine('-------------')
+// repeat, using dumpBank() to grab bank 0 and dump it
 dumpBank(sensor, 0)
 
-basic.showNumber(sensor.status)
-pause(1000)
+serial.writeLine('-------------')
 
 if (sensor.status == 192) {
     basic.showIcon(IconNames.Happy)
@@ -44,8 +47,8 @@ if (sensor.status == 192) {
 // *** try loading the DMP firmware into the chip
 dmpLoadFirmware(sensor)
 
-// grab bank 0 and dump it
-dumpBank(sensor, 0)
+// grab bank 16 (0x1000 is where DMP memory begins) and dump it
+dumpBank(sensor, 16)
 
 // *** read it back to confirm
 dmpCheckFirmware(sensor)
@@ -151,7 +154,7 @@ while(true) {
                 let magreg = pins.createBuffer(32)
                 for (let i=0; i<32; i++){
                     magreg[i] = i2cReadByte(sensor.mag, i)
-                    serial.writeLine(toHex(magreg[i]))
+                    serial.writeLine(hexByte(magreg[i]))
                 }
                 //let magReg = i2cReadBuffer(sensor.mag, 0, 32)
                 serial.writeLine('icm[00..] = [' + dumpBufferAsHex(magreg, 0, 16) + ']')
