@@ -11,7 +11,7 @@ namespace Show{
             case ShowMode.NONE:
                 break
             case ShowMode.BASIC:
-                basic.showString(message, 50)
+                basic.showString(message, 75)
                 pause(1000)
                 basic.clearScreen()
                 break

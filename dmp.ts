@@ -11,19 +11,50 @@ function dmpLoadFirmware(sensor:ICM20948) {
     let dmpAddr = DMP_START_ADDRESS + DMP_LOAD_START
     let hexOffset = 0
     let percent: number
+    let good = true
 
-    while (hexOffset <= allHex) {
-        percent = Math.round(100 * hexOffset / allHex)  
-        let size = 256 - (dmpAddr & 0xff) // (generally, a full 256-byte bank)
-        sensor.useBank(dmpAddr >> 8)
-        i2cWriteBuffer(sensor.icm, (dmpAddr & 0xff), dmpHex.slice(hexOffset, size))
+    while (good && (hexOffset <= allHex)) {  
+        let dmpBank = dmpAddr >> 8 
+        let dmpOffset = dmpAddr & 0xff // (generally, 0)
+        let size = 256 - dmpOffset     // (generally, a full 256-byte bank)
+        let chunk =  dmpHex.slice(hexOffset, size)
+
+
+        serial.writeLine('-------- ' + dmpBank + ' --------')
+        serial.writeLine(chunk.toHex())
+        serial.writeLine('------------------------')
+
+        // steer data into correct DMP memory bank 
+        i2cWriteByte(sensor.icm, ICM20948_MEM_BANK_SEL, dmpBank)
+        i2cWriteByte(sensor.icm, ICM20948_MEM_START_ADDR, dmpOffset)
+        i2cWriteBuffer(sensor.icm, ICM20948_MEM_R_W, chunk)
         pause(200)
-        serial.writeLine('written ' + percent + '%')
+
+        // see what this bank now contains
+        i2cWriteByte(sensor.icm, ICM20948_MEM_BANK_SEL, dmpBank)
+        i2cWriteByte(sensor.icm, ICM20948_MEM_START_ADDR, dmpOffset)
+        let found = i2cReadBuffer(sensor.icm, ICM20948_MEM_R_W, size)
+
+        serial.writeLine(found.toHex())
+        serial.writeLine('------------------------')
+
+        //good = found.equals(chunk)
+        if (good) {
+            percent = Math.round(100 * hexOffset / allHex)
+            serial.writeLine('checked ' + percent + '%')
+        } else {
+            serial.writeLine('mismatch on bank ' + (dmpAddr >> 8))
+        }
+
         hexOffset += size
         dmpAddr += size
     }
 
-    Show.see(mode,"DMP Firmware Upload Successful (?)")
+    if (good) {
+        Show.see(mode, "DMP Firmware Load Successful !")
+    } else {
+        Show.see(mode, "DMP Firmware load Failed !")
+    }
 
 }
 
@@ -36,24 +67,29 @@ function dmpCheckFirmware(sensor: ICM20948) {
     let good = true
 
     while (good && (hexOffset <= allHex)) {
-        percent = Math.round(100 * hexOffset / allHex)
-        let size = 256 - (dmpAddr & 0xff) // (generally, a full 256-byte bank)
+        let dmpBank = dmpAddr >> 8
+        let dmpOffset = dmpAddr & 0xff // (generally, 0)
+        let size = 256 - dmpOffset     // (generally, a full 256-byte bank)
+
 
         let here  = Buffer.create(size) // what this bank should contain
         here = dmpHex.slice(hexOffset, size) 
 
         serial.writeLine(here.toHex())
-        
-        let bank = dmpAddr >> 8
-        sensor.useBank(bank)
+
+
         // see what this bank actually contains
-        let there = i2cReadBuffer(sensor.icm, (dmpAddr & 0xff), size)
-        pause(200)
+        i2cWriteByte(sensor.icm, ICM20948_MEM_BANK_SEL, dmpBank)
+        i2cWriteByte(sensor.icm, ICM20948_MEM_START_ADDR, dmpOffset)
+        let there = i2cReadBuffer(sensor.icm, ICM20948_MEM_R_W, size)
         
+        pause(200)
+
         serial.writeLine(there.toHex())
 
         good = there.equals(here)
         if (good){
+            percent = Math.round(100 * hexOffset / allHex)
             serial.writeLine('checked ' + percent + '%')
         } else {
             serial.writeLine('mismatch on bank ' + (dmpAddr >> 8))
@@ -104,17 +140,22 @@ function dmpCheckFirmware(sensor: ICM20948) {
             print(text, end="\r")
         self._dbg(1,"DMP Firmware Upload Successfull !")
 
-*/
+ //Switch memory bank
+    function DMP_bank(self, dmp_bank):
+        if not self._dmp_bank == dmp_bank :
+            self.write(0, ICM_MEM_BANK_SEL, dmp_bank)
+            self._dmp_bank = dmp_bank
 
-/* Write to DMP register
-function DMP_write(sensor:ICM20948, register:number, data:number) {
-    let dmp_bank = register >> 8
-    sensor.DMP_bank(dmp_bank)
-    let dmp_address = register & 0xFF
-   //sensor._dbg(2, "Writing DMP Bank", hex(dmp_bank), "Adress", hex(dmp_address), "Data", bytes(data))
-    sensor.write(0, ICM_MEM_START_ADDR, dmp_address)
-    sensor.write_bytes(0, ICM_MEM_R_W, bytes(data))
-}
+
+//Write to DMP register
+    function DMP_write(sensor:ICM20948, register:number, data:number) {
+        let dmp_bank = register >> 8
+        sensor.DMP_bank(dmp_bank)
+        let dmp_address = register & 0xFF
+    //sensor._dbg(2, "Writing DMP Bank", hex(dmp_bank), "Adress", hex(dmp_address), "Data", bytes(data))
+        sensor.write(0, ICM_MEM_START_ADDR, dmp_address)
+        sensor.write_bytes(0, ICM_MEM_R_W, bytes(data))
+    }
         
 // Read to DMP register
 function DMP_read(self, register, length = 1) {
