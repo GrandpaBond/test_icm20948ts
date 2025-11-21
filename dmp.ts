@@ -1,8 +1,10 @@
 /** The internal Digital Motion Processor (DMP) runs firmware that must be loaded. 
  *  The dmpCode[] array holds an image of this data (over 14kb long!). 
- *  It gets loaded into the ICM's internal memory, but the first and last
+ *  It gets loaded into the ICM's internal memory in 16-byte chunks, but the first and last
  *  banks are partial: firmware code (currently) starts at DMP mem 0x1090,
  *  and its last byte lives (currently) at DMP mem 0x4861
+ * 
+ * ICM20948_MEM_START_ADDR
  * 
 */
 ``
@@ -12,11 +14,13 @@ function dmpLoadFirmware(sensor:ICM20948) {
     let hexOffset = 0
     let percent: number
     let good = true
+    let bankWas = -1
 
     while (good && (hexOffset <= allHex)) {  
         let dmpBank = dmpAddr >> 8 
         let dmpOffset = dmpAddr & 0xff // (generally, 0)
-        let size = 256 - dmpOffset     // (generally, a full 256-byte bank)
+
+        let size = 256 - dmpOffset     // (generally, a full 16-byte chunk)
         let chunk =  dmpHex.slice(hexOffset, size)
 
 

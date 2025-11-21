@@ -4,13 +4,15 @@
 
 //namespace ICM {
 const ICM20948_I2C_ADDR = 0x68
-const ICM20948_BANK_SEL = 0x7f
 /* 
 Memory banks are a standard 256 bytes long.
 Register-addresses are two bytes (Bank:Offset).
-The constants below are just the Offsets, so before access the Bank must be 
+The constants below are just the Offsets, so before access, the Bank must be 
 selected (and is then remembered).
 */
+
+// The last byte of every bank is used as a switch for selecting another bank
+const ICM20948_BANK_SEL = 0x7f  
 
 // Bank 0 
 const ICM20948_WHO_AM_I = 0x00 // ID register
@@ -44,7 +46,11 @@ const ICM20948_GRYO_XOUT_H = 0x33
 const ICM20948_TEMP_OUT_H = 0x39
 const ICM20948_TEMP_OUT_L = 0x3A
 const ICM20948_EXT_SLV_SENS_DATA_00 = 0x3B // (where slave data goes)
-// i.e. low-endian MAG data  HXL, HXH, HYL, HYH, HZL, HZH in 0x3B..0x40
+// i.e. little-endian MAG data  HXL, HXH, HYL, HYH, HZL, HZH in 0x3B..0x40
+
+const ICM20948_PRGM_STRT_ADDRH = 0x50 // sets PCM execution entry-point
+const ICM20948_PRGM_STRT_ADDRL = 0x51
+
 const ICM20948_FIFO_EN_1 = 0x66
 const ICM20948_FIFO_EN_2 = 0x67
 const ICM20948_FIFO_RST = 0x68
@@ -55,9 +61,11 @@ const ICM20948_FIFO_R_W = 0x72
 const ICM20948_DATA_RDY_STATUS = 0x74
 const ICM20948_HW_FIX_DISABLE = 0x75  //thanks Sparkfun
 const ICM20948_FIFO_CFG = 0x76
-const ICM20948_MEM_START_ADDR = 0x7C
-const ICM20948_MEM_R_W = 0x7D
-const ICM20948_MEM_BANK_SEL = 0x7E
+
+// Access to internal DMP memory area
+const ICM20948_MEM_START_ADDR = 0x7C // (gets auto-incremented during I/O)
+const ICM20948_MEM_R_W = 0x7D   // each byte streams through this register
+const ICM20948_MEM_BANK_SEL = 0x7E // target bank in DMP mem
 
 // Bank 2
 const ICM20948_GYRO_SMPLRT_DIV = 0x00
@@ -117,12 +125,14 @@ const ICM20948_I2C_SLV_CTRL_BYTE_SWAP = 0b01000000 // 0x40
 const ICM20948_I2C_SLV_CTRL_REG_DIS = 0b00100000 // 0x20
 const ICM20948_I2C_SLV_CTRL_REG_GROUP = 0b00010000 // 0x10
 
-
+// various other literals
 // Offset and sensitivity - defined in electrical characteristics, and TEMP_OUT_H/L of datasheet
 const ICM20948_TEMPERATURE_DEGREES_OFFSET = 21
 const ICM20948_TEMPERATURE_SENSITIVITY = 333.87
 const ICM20948_ROOM_TEMP_OFFSET = 21
 
+
+// --------- Magnetometer Registers ----------
 const AK09916_I2C_ADDR = 0x0C
 
 const AK09916_WIA2 = 0x01  // ID register
