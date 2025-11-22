@@ -94,7 +94,7 @@ input.onButtonPressed(Button.AB, function() {
 // Button A cycles to next testsOff
 input.onButtonPressed(Button.A, function () {
     active = false
-    test = (test+1) % 4
+    test = (test+1) % testsOn.length
     basic.showString(testsOff[test])
     pause(1000)
     basic.clearScreen()
@@ -109,11 +109,12 @@ input.onButtonPressed(Button.B, function () {
     }
 })
 
-while(active) {
+while(true) {
     if (active) {
         switch (test) {
             case Tests.TEST:
                 tryDMPmem()
+                //basic.showString('testing',75)
                 break
             case Tests.SENSE:
                 accelData = sensor.senseAccel()
