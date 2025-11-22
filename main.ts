@@ -3,7 +3,7 @@ serial.redirectToUSB()
 let mode = ShowMode.BASIC
 datalogger.mirrorToSerial(true) // monitor Log output
 
-basic.showString("Hello!",50)
+//basic.showString("Hello!",50)
 Show.see(mode, "STARTING UP...")
 pause(1000)
 
@@ -12,40 +12,36 @@ let sensor = new ICM20948(ICM20948_I2C_ADDR, true) // address Mag directly
 // let sensor = new ICM20948(ICM20948_I2C_ADDR, false) // address Mag indirectly
 pause(1000)
 
-// try a simple multi-byte read 
-let rawT = sensor.readTemperature()
-//Show.see(mode,"rawT:" + rawT)
-let t = Math.floor(rawT*100)/100
-Show.see(mode,"temp:" + t)
+if (sensor.status == 192) {
+    basic.showIcon(IconNames.Happy)
+} else {
+    basic.showIcon(IconNames.Happy)
+}
+pause(1000)
+basic.clearScreen()
 
 pause(1000)
 
 // now try dumping bank first 65 bytes of bank 0 
 // up to end of mirrored mag-data (only when in indirect Master-Slave mode)
-sensor.useBank(0)
+//sensor.useBank(0)
 /*
 for (let reg=0; reg<65; reg++) {
     let bite = i2cReadByte(sensor.icm, reg)
     basic.showNumber(bite)
 } */
 
-let dump = i2cReadBuffer(sensor.icm, 0, 65).toHex()
-serial.writeLine('test:'+dump)
+//let dump = i2cReadBuffer(sensor.icm, 0, 65).toHex()
+//serial.writeLine('test:'+dump)
 //basic.showString('test:' + dump)
-serial.writeLine('-------------')
+//serial.writeLine('-------------')
 // repeat, using dumpBank() to grab bank 0 and dump it
-dumpBank(sensor, 0)
+//dumpBank(sensor, 0)
 
-serial.writeLine('-------------')
-
-if (sensor.status == 192) {
-    basic.showIcon(IconNames.Happy)
-    pause(1000)
-    basic.clearScreen()
-}
+//serial.writeLine('-------------')
 
 // *** try loading the DMP firmware into the chip
-dmpLoadFirmware(sensor)
+//dmpLoadFirmware(sensor)
 
 
 //serial.writeLine('initial dump of mag...')
@@ -68,6 +64,7 @@ for (let i=0; i<32; i++) {
 
 
 enum Tests {
+    TEST,
     SENSE,
     ACCEL,
     GYRO,
@@ -80,8 +77,8 @@ let magData:number[]
 
 // select sensor to test
 let test = 0
-let testsOn = ['S', 'A', 'G', 'M']
-let testsOff = ['s', 'a', 'g', 'm']
+let testsOn = ['T', 'S', 'A', 'G', 'M']
+let testsOff = ['t', 's', 'a', 'g', 'm']
 basic.showString(testsOff[test])
 pause(1000)
 basic.clearScreen()
@@ -112,9 +109,12 @@ input.onButtonPressed(Button.B, function () {
     }
 })
 
-while(true) {
+while(active) {
     if (active) {
         switch (test) {
+            case Tests.TEST:
+                tryDMPmem()
+                break
             case Tests.SENSE:
                 accelData = sensor.senseAccel()
                 gyroData = sensor.senseGyro()
@@ -163,4 +163,36 @@ while(true) {
         pause(200)
         basic.showString(testsOff[test])
     }
+}
+
+
+function tryDMPmem() {
+
+    let chunk: Buffer
+    let offset = Math.round(Math.random() * 14000)
+    chunk = dmpHex.slice(offset, 16)
+    serial.writeLine('-------- test DMP mem --------')
+    serial.writeLine('-------- data @' + offset + ' --------')
+    serial.writeLine(chunk.toHex())
+    serial.writeLine('---------load this----------')
+    pause(1000)
+
+    // steer data into arbitrary DMP memory area
+    i2cWriteByte(sensor.icm, ICM20948_MEM_BANK_SEL, 5)
+    i2cWriteByte(sensor.icm, ICM20948_MEM_START_ADDR, 100)
+    i2cWriteBuffer(sensor.icm, ICM20948_MEM_R_W, chunk)
+
+    pause(1000)
+    serial.writeLine('---------read back----------')
+    pause(1000)
+
+    // see what this area now contains
+    i2cWriteByte(sensor.icm, ICM20948_MEM_BANK_SEL, 5)
+    i2cWriteByte(sensor.icm, ICM20948_MEM_START_ADDR, 100)
+    let found = i2cReadBuffer(sensor.icm, ICM20948_MEM_R_W, chunk.length)
+    pause(1000)
+
+    serial.writeLine(found.toHex())
+    serial.writeLine('----------------------------')
+
 }

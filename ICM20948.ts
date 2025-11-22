@@ -62,9 +62,9 @@ const ICM20948_DATA_RDY_STATUS = 0x74
 const ICM20948_HW_FIX_DISABLE = 0x75  //thanks Sparkfun
 const ICM20948_FIFO_CFG = 0x76
 
-// Access to internal DMP memory area
+// Access portal into internal DMP memory area
 const ICM20948_MEM_START_ADDR = 0x7C // (gets auto-incremented during I/O)
-const ICM20948_MEM_R_W = 0x7D   // each byte streams through this register
+const ICM20948_MEM_R_W = 0x7D   // bytes stream through this register
 const ICM20948_MEM_BANK_SEL = 0x7E // target bank in DMP mem
 
 // Bank 2
